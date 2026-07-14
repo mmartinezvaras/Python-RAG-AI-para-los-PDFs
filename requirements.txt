@@ -2,4 +2,4 @@ langchain
 chromadb
 pypdf
 pytest
-
+boto3
