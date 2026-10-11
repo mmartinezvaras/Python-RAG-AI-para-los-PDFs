@@ -59,7 +59,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build image
-        run: docker build -t rag-demo .
+        run: |
+          if ! docker build --progress=plain -t rag-demo . > build.log 2>&1; then
+            cat build.log
+            echo "::error title=docker build failed::$(grep -v '^#[0-9]* sha256' build.log | tail -c 2500 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
       - name: Run it and ask a question
         run: |
           docker run -d --name demo -p 7860:7860 rag-demo
