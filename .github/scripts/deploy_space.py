@@ -31,27 +31,42 @@ Runs a local LLM (Llama 3.2 3B via Ollama) on the free CPU, so answers take a fe
 Source code, architecture and tests: {GITHUB_URL}
 """
 
-api = HfApi(token=os.environ["HF_TOKEN"])
-user = api.whoami()["name"]
+def fail(step: str, exc: Exception):
+    msg = f"{step}: {type(exc).__name__}: {exc}".replace("\n", "%0A")
+    print(f"::error title=Hugging Face deploy failed::{msg}")
+    raise SystemExit(1)
+
+
+api = HfApi(token=os.environ["HF_TOKEN"].strip())
+try:
+    user = api.whoami()["name"]
+except Exception as exc:
+    fail("Checking the HF_TOKEN secret (is it pasted correctly?)", exc)
 repo_id = f"{user}/{SPACE_NAME}"
 
-api.create_repo(repo_id, repo_type="space", space_sdk="docker", exist_ok=True)
+try:
+    api.create_repo(repo_id, repo_type="space", space_sdk="docker", exist_ok=True)
+except Exception as exc:
+    fail(f"Creating the Space {repo_id} (does the token have Write access?)", exc)
 
 with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as fh:
     fh.write(SPACE_README)
     readme_path = fh.name
 
-api.upload_folder(
-    repo_id=repo_id,
-    repo_type="space",
-    folder_path=".",
-    ignore_patterns=[".git/*", ".github/*", ".devcontainer/*", "docs/*", "chroma/*", "README.md", "**/__pycache__/*"],
-    commit_message="Deploy from GitHub",
-)
-api.upload_file(
-    repo_id=repo_id, repo_type="space", path_or_fileobj=readme_path, path_in_repo="README.md",
-    commit_message="Space README",
-)
+try:
+    api.upload_folder(
+        repo_id=repo_id,
+        repo_type="space",
+        folder_path=".",
+        ignore_patterns=[".git/*", ".github/*", ".devcontainer/*", "docs/*", "chroma/*", "README.md", "**/__pycache__/*"],
+        commit_message="Deploy from GitHub",
+    )
+    api.upload_file(
+        repo_id=repo_id, repo_type="space", path_or_fileobj=readme_path, path_in_repo="README.md",
+        commit_message="Space README",
+    )
+except Exception as exc:
+    fail(f"Uploading the files to {repo_id}", exc)
 
 url = f"https://huggingface.co/spaces/{repo_id}"
 print(f"::notice title=Live demo deployed::{url}")
