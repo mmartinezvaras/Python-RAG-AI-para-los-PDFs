@@ -25,7 +25,15 @@ python -m pip install --quiet -r requirements.txt
 if ! command -v ollama >/dev/null 2>&1; then
   echo "▶ Installing Ollama"
   if ! command -v zstd >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -qq && sudo apt-get install -y -qq zstd >/dev/null
+    # The dev container image ships a Yarn apt source with an expired key that
+    # makes `apt-get update` fail; we don't need it, so drop it first.
+    sudo rm -f /etc/apt/sources.list.d/yarn.list
+    sudo apt-get update -qq || true
+    sudo apt-get install -y -qq zstd >/dev/null
+  fi
+  if ! command -v zstd >/dev/null 2>&1; then
+    echo "❌ zstd is required to install Ollama. Install it (e.g. sudo apt-get install zstd) and re-run." >&2
+    exit 1
   fi
   curl -fsSL https://ollama.com/install.sh | sh
 fi
