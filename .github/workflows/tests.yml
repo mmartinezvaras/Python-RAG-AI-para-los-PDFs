@@ -1,0 +1,76 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Pipeline tests (no LLM)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pytest -m "not llm" -v
+      - name: Report installed versions
+        run: echo "::notice title=versions::$(pip freeze | grep -iE '^(langchain|chromadb|pypdf|streamlit|pytest)' | paste -sd ' ')"
+
+  end-to-end:
+    name: End-to-end RAG evaluation (Ollama + LLM-as-judge)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Same script GitHub Codespaces runs, so this also proves the one-click demo setup works.
+      - name: Setup (deps, Ollama, models, index)
+        run: bash scripts/setup.sh
+
+      - name: Ask a question from the command line
+        run: |
+          out=$(python query_data.py "When was the first Formula One season?")
+          echo "$out"
+          echo "::notice title=CLI answer::$(echo "$out" | tr '\n' ' ')"
+
+      - name: LLM-as-a-judge evaluation
+        run: pytest -m llm -v -s
+
+      - name: Web demo smoke test + screenshot
+        run: |
+          pip install --quiet playwright
+          python -m playwright install --with-deps chromium > /dev/null
+          nohup bash scripts/run_app.sh > streamlit.log 2>&1 &
+          if ! python .github/scripts/screenshot.py > smoke.log 2>&1; then
+            cat smoke.log streamlit.log
+            echo "::error title=smoke test::$(tail -c 1500 smoke.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+            echo "::error title=streamlit log::$(tail -c 1500 streamlit.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          cat smoke.log
+          echo "::notice title=web demo::$(tail -c 800 smoke.log | tr '\n' ' ')"
+
+      # Saves a screenshot of the demo for the README the first time it is missing.
+      - name: Commit README screenshot
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          if [ -f docs/demo.png ]; then exit 0; fi
+          mkdir -p docs && mv demo.png docs/demo.png
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/demo.png
+          git commit -m "Add demo screenshot"
+          git push
