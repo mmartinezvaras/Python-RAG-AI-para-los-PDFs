@@ -52,6 +52,32 @@ jobs:
         timeout-minutes: 12
         run: timeout 660 devcontainer exec --workspace-folder . bash .github/scripts/codespaces_smoke.sh
 
+  docker:
+    name: Online demo image (Docker, as on Hugging Face)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build image
+        run: |
+          if ! docker build --progress=plain -t rag-demo . > build.log 2>&1; then
+            cat build.log
+            echo "::error title=docker build failed::$(grep -v '^#[0-9]* sha256' build.log | tail -c 2500 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+      - name: Run it and ask a question
+        run: |
+          docker run -d --name demo -p 7860:7860 rag-demo
+          for _ in $(seq 1 120); do curl -sf http://localhost:7860/_stcore/health && break; sleep 2; done
+          if ! curl -sf http://localhost:7860/_stcore/health; then
+            echo "::error title=online demo did not start::$(docker logs demo 2>&1 | tail -c 1500 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          answer=$(docker exec demo python query_data.py "How many points does the winner of a Formula One race get?")
+          echo "$answer"
+          echo "$answer" | grep -qiE "\b25\b|twenty-five"
+          echo "::notice title=online demo OK::$(echo "$answer" | tr '\n' ' ') | image $(docker image inspect rag-demo --format '{{.Size}}' | numfmt --to=iec)"
+
   end-to-end:
     name: End-to-end RAG evaluation (Ollama + LLM-as-judge)
     runs-on: ubuntu-24.04
