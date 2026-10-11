@@ -24,7 +24,7 @@ jobs:
   codespaces:
     name: One-click demo in the real Codespaces container
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       # Builds .devcontainer/devcontainer.json and runs its postCreateCommand,
