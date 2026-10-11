@@ -17,6 +17,9 @@ OLLAMA_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 if not OLLAMA_URL.startswith("http"):
     OLLAMA_URL = f"http://{OLLAMA_URL}"
 
+# On the public online demo, visitors share one instance, so uploads are off.
+PUBLIC_DEMO = os.getenv("RAG_PUBLIC_DEMO") == "1"
+
 EXAMPLES = [
     "How many points does the winner of a Formula One race get?",
     "What material are F1 drivers' overalls made of?",
@@ -89,7 +92,9 @@ with st.sidebar:
     for f in pdf_files():
         st.markdown(f"- `{f}`")
 
-    uploaded = st.file_uploader("Add your own PDF", type="pdf")
+    uploaded = None if PUBLIC_DEMO else st.file_uploader("Add your own PDF", type="pdf")
+    if PUBLIC_DEMO:
+        st.caption("Uploading your own PDFs is available when you run the project yourself.")
     if uploaded is not None and st.session_state.get("last_upload") != uploaded.name:
         with open(os.path.join(DATA_PATH, os.path.basename(uploaded.name)), "wb") as fh:
             fh.write(uploaded.getbuffer())
@@ -116,7 +121,7 @@ for i, q in enumerate(EXAMPLES):
 question = st.text_input("Or type your own question (English or Spanish):", key="question")
 
 if question:
-    with st.spinner("Searching the documents and generating the answer…"):
+    with st.spinner("Searching the documents and generating the answer (about 10–30 s on the free CPU)…"):
         try:
             answer = answer_question(question)
         except Exception as exc:  # show a friendly message instead of a stack trace

@@ -1,0 +1,9 @@
+.git
+.github
+.devcontainer
+.venv
+__pycache__
+.pytest_cache
+chroma
+docs
+*.log
