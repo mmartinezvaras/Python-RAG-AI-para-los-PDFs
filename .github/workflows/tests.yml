@@ -21,6 +21,37 @@ jobs:
       - name: Report installed versions
         run: echo "::notice title=versions::$(pip freeze | grep -iE '^(langchain|chromadb|pypdf|streamlit|pytest)' | paste -sd ' ')"
 
+  codespaces:
+    name: One-click demo in the real Codespaces container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - run: npm install -g @devcontainers/cli
+
+      # The same steps GitHub Codespaces does for a visitor, split so a failure
+      # or hang shows which phase it was in.
+      - name: Build and start the dev container
+        timeout-minutes: 10
+        run: devcontainer up --workspace-folder . --skip-post-create
+
+      - name: postCreateCommand (scripts/setup.sh)
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
+          if ! timeout 840 devcontainer exec --workspace-folder . bash -c "bash scripts/setup.sh 2>&1 | tee /tmp/setup.log"; then
+            echo "::error title=setup failed::$(devcontainer exec --workspace-folder . tail -c 2000 /tmp/setup.log | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          echo "::notice title=setup finished::$(devcontainer exec --workspace-folder . bash -c 'tail -5 /tmp/setup.log; pgrep -fa "ollama|python" || echo no-leftover-processes' | sed ':a;N;$!ba;s/\n/%0A/g')"
+
+      - name: postAttachCommand (scripts/run_app.sh) and ask a question
+        timeout-minutes: 12
+        run: timeout 660 devcontainer exec --workspace-folder . bash .github/scripts/codespaces_smoke.sh
+
   end-to-end:
     name: End-to-end RAG evaluation (Ollama + LLM-as-judge)
     runs-on: ubuntu-24.04

@@ -7,6 +7,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Only one setup at a time: a second run waits for the first, then just checks
+# that everything is in place (every step below is safe to repeat).
+exec 9>/tmp/rag-setup.lock
+if ! flock -n 9; then
+  echo "⏳ First-time setup is still running (installing the AI model). Waiting for it to finish…"
+  flock 9
+fi
+
 LLM_MODEL="${RAG_LLM_MODEL:-llama3.2:3b}"
 EMBED_MODEL="${RAG_EMBED_MODEL:-nomic-embed-text}"
 
@@ -17,18 +25,38 @@ python -m pip install --quiet -r requirements.txt
 if ! command -v ollama >/dev/null 2>&1; then
   echo "▶ Installing Ollama"
   if ! command -v zstd >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -qq && sudo apt-get install -y -qq zstd >/dev/null
+    # The dev container image ships a Yarn apt source with an expired key that
+    # makes `apt-get update` fail; we don't need it, so drop it first.
+    sudo rm -f /etc/apt/sources.list.d/yarn.list
+    sudo apt-get update -qq || true
+    sudo apt-get install -y -qq zstd >/dev/null
+  fi
+  if ! command -v zstd >/dev/null 2>&1; then
+    echo "❌ zstd is required to install Ollama. Install it (e.g. sudo apt-get install zstd) and re-run." >&2
+    exit 1
   fi
   curl -fsSL https://ollama.com/install.sh | sh
 fi
 
+# If we start Ollama just for the downloads, stop it again at the end so this
+# script never leaves a background process behind (Codespaces waits for the
+# setup to fully finish before opening the demo, which starts Ollama again).
+rm -f /tmp/ollama-started-by-script.pid
 bash scripts/start_ollama.sh
 
-echo "▶ Downloading models ($EMBED_MODEL, $LLM_MODEL), this takes a few minutes the first time"
-ollama pull "$EMBED_MODEL"
-ollama pull "$LLM_MODEL"
+for model in "$EMBED_MODEL" "$LLM_MODEL"; do
+  if ! ollama show "$model" >/dev/null 2>&1; then
+    echo "▶ Downloading model $model (only the first time, a few minutes)"
+    ollama pull "$model"
+  fi
+done
 
 echo "▶ Indexing the PDFs"
 python populate_database.py
 
-echo "✅ Setup complete. Run: streamlit run app.py"
+if [ -f /tmp/ollama-started-by-script.pid ]; then
+  kill "$(cat /tmp/ollama-started-by-script.pid)" 2>/dev/null || true
+  rm -f /tmp/ollama-started-by-script.pid
+fi
+
+echo "✅ Setup complete. Run: bash scripts/run_app.sh"
