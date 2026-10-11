@@ -41,8 +41,7 @@ fi
 # If we start Ollama just for the downloads, stop it again at the end so this
 # script never leaves a background process behind (Codespaces waits for the
 # setup to fully finish before opening the demo, which starts Ollama again).
-ollama_was_running=0
-curl -sf http://localhost:11434/api/tags >/dev/null && ollama_was_running=1
+rm -f /tmp/ollama-started-by-script.pid
 bash scripts/start_ollama.sh
 
 for model in "$EMBED_MODEL" "$LLM_MODEL"; do
@@ -55,8 +54,9 @@ done
 echo "▶ Indexing the PDFs"
 python populate_database.py
 
-if [ "$ollama_was_running" = 0 ]; then
-  pkill -f "ollama serve" || true
+if [ -f /tmp/ollama-started-by-script.pid ]; then
+  kill "$(cat /tmp/ollama-started-by-script.pid)" 2>/dev/null || true
+  rm -f /tmp/ollama-started-by-script.pid
 fi
 
 echo "✅ Setup complete. Run: bash scripts/run_app.sh"

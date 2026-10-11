@@ -16,6 +16,7 @@ fi
 echo "▶ Starting Ollama"
 # setsid detaches the server from this shell so it keeps running after the script exits.
 setsid nohup ollama serve >"$LOG" 2>&1 < /dev/null 9>&- &
+echo $! > /tmp/ollama-started-by-script.pid
 
 for _ in $(seq 1 120); do
   if curl -sf http://localhost:11434/api/tags >/dev/null; then
