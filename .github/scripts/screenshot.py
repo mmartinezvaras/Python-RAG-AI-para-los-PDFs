@@ -1,6 +1,7 @@
 """CI smoke test: open the Streamlit demo, ask an example question, check the
 answer and its sources render, and save a screenshot (demo.png)."""
 
+import re
 import time
 import urllib.request
 
@@ -29,7 +30,7 @@ with sync_playwright() as p:
     time.sleep(2)
     answer = page.locator("[data-testid='stMarkdownContainer']").all_inner_texts()
     print("\n".join(answer))
-    assert any("25" in a for a in answer), "Expected '25' in the answer"
+    assert any(re.search(r"\b25\b|twenty-five", a, re.I) for a in answer), "Expected 25 in the answer"
     page.screenshot(path="demo.png", full_page=True)
     browser.close()
 
