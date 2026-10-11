@@ -21,6 +21,19 @@ jobs:
       - name: Report installed versions
         run: echo "::notice title=versions::$(pip freeze | grep -iE '^(langchain|chromadb|pypdf|streamlit|pytest)' | paste -sd ' ')"
 
+  codespaces:
+    name: One-click demo in the real Codespaces container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      # Builds .devcontainer/devcontainer.json and runs its postCreateCommand,
+      # exactly like GitHub Codespaces does for a visitor.
+      - uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: bash .github/scripts/codespaces_smoke.sh
+
   end-to-end:
     name: End-to-end RAG evaluation (Ollama + LLM-as-judge)
     runs-on: ubuntu-24.04
