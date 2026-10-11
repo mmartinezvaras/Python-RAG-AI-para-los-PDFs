@@ -1,0 +1,56 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Pipeline tests (no LLM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pytest -m "not llm" -v
+      - run: pip freeze
+
+  end-to-end:
+    name: End-to-end RAG evaluation (Ollama + LLM-as-judge)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Same script GitHub Codespaces runs, so this also proves the one-click demo setup works.
+      - name: Setup (deps, Ollama, models, index)
+        run: bash scripts/setup.sh
+
+      - name: Ask a question from the command line
+        run: python query_data.py "When was the first Formula One season?"
+
+      - name: LLM-as-a-judge evaluation
+        run: pytest -m llm -v -s
+
+      - name: Web demo smoke test + screenshot
+        run: |
+          pip install --quiet playwright
+          python -m playwright install --with-deps chromium
+          nohup bash scripts/run_app.sh > streamlit.log 2>&1 &
+          python .github/scripts/screenshot.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-screenshot
+          path: |
+            demo.png
+            streamlit.log
