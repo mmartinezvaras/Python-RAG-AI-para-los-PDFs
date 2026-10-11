@@ -103,7 +103,14 @@ streamlit run app.py               # web demo at http://localhost:8501
 python query_data.py "How often is the FIFA World Cup held?"   # or use the command line
 ```
 
-**Linux:** `bash scripts/setup.sh` does all of the above (including installing Ollama), then `streamlit run app.py`.
+**Linux:** `bash scripts/setup.sh` does all of the above (including installing Ollama), then `bash scripts/run_app.sh`.
+
+**With Docker (any OS, nothing else to install):** the image bundles Ollama, the models and the indexed PDFs.
+
+```bash
+docker build -t rag-demo .
+docker run -p 7860:7860 rag-demo     # open http://localhost:7860
+```
 
 ### Configuration
 
@@ -133,6 +140,7 @@ pytest -m llm -v      # end-to-end evaluation with the real model (needs Ollama 
 ├── test_pipeline.py           # Fast unit tests for the indexing pipeline
 ├── test_rag.py                # LLM-as-a-judge evaluation with pytest
 ├── scripts/                   # One-shot setup and launch scripts
+├── Dockerfile, docker/        # Whole demo in one container
 ├── .devcontainer/             # GitHub Codespaces one-click environment
 ├── .github/workflows/         # CI: unit tests + end-to-end run with Ollama
 └── requirements.txt

@@ -1,5 +1,5 @@
-# Self-contained online demo: Ollama + models + indexed PDFs + Streamlit app.
-# Used by the Hugging Face Space (port 7860); also runs anywhere with Docker:
+# Self-contained demo: Ollama + models + indexed PDFs + Streamlit web app.
+# Run the whole demo anywhere with Docker (no Python or Ollama install needed):
 #   docker build -t rag-demo . && docker run -p 7860:7860 rag-demo
 FROM python:3.12-slim
 
@@ -8,12 +8,11 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && curl -fsSL https://ollama.com/install.sh | sh
 
-# Hugging Face Spaces runs the container as user 1000.
+# Run as a non-root user.
 RUN useradd -m -u 1000 user \
  && mkdir -p /home/user/app && chown user:user /home/user/app
 ENV HOME=/home/user \
     OLLAMA_MODELS=/home/user/.ollama/models \
-    RAG_PUBLIC_DEMO=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /home/user/app
 

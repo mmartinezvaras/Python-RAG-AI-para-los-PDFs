@@ -53,7 +53,7 @@ jobs:
         run: timeout 660 devcontainer exec --workspace-folder . bash .github/scripts/codespaces_smoke.sh
 
   docker:
-    name: Online demo image (Docker, as on Hugging Face)
+    name: Docker image (whole demo in one container)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
