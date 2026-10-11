@@ -9,7 +9,8 @@ RUN apt-get update \
  && curl -fsSL https://ollama.com/install.sh | sh
 
 # Hugging Face Spaces runs the container as user 1000.
-RUN useradd -m -u 1000 user
+RUN useradd -m -u 1000 user \
+ && mkdir -p /home/user/app && chown user:user /home/user/app
 ENV HOME=/home/user \
     OLLAMA_MODELS=/home/user/.ollama/models \
     RAG_PUBLIC_DEMO=1 \
