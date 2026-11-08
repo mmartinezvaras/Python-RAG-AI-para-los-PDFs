@@ -22,15 +22,20 @@ def _passage(n, relevance=0.8, articles="38"):
 
 class FakeRetriever:
     def __init__(self, result):
-        self.result = result
+        self.result, self.queries = result, []
 
     def search(self, question, mode=None, k=None):
+        self.queries.append(question)
         return self.result
 
 
 class FakeLLM:
     def __init__(self, pieces):
-        self.pieces, self.prompts = pieces, []
+        self.pieces, self.prompts, self.translations = pieces, [], []
+
+    def complete(self, prompt):
+        self.translations.append(prompt)
+        return "¿Cuántas horas deben pasar entre jornadas?\n"
 
     def stream(self, prompt):
         self.prompts.append(prompt)
@@ -41,8 +46,10 @@ class FakeLLM:
 def patch_pipeline(monkeypatch):
     def apply(result, pieces=("Son treinta ", "días naturales [1]", "."), llm=None):
         llm = llm or FakeLLM(list(pieces))
-        monkeypatch.setattr(answer_mod, "get_retriever", lambda: FakeRetriever(result))
+        retriever = FakeRetriever(result)
+        monkeypatch.setattr(answer_mod, "get_retriever", lambda: retriever)
         monkeypatch.setattr(answer_mod, "_llm", lambda: llm)
+        llm.retriever = retriever
         return llm
 
     return apply
@@ -89,3 +96,20 @@ def test_low_relevance_skips_the_llm(patch_pipeline):
 def test_empty_index_says_not_found(patch_pipeline):
     patch_pipeline(SearchResult())
     assert not answer_question("¿Algo?").grounded
+
+
+def test_questions_in_another_language_are_translated_for_retrieval(patch_pipeline, monkeypatch):
+    monkeypatch.setattr(config, "DOC_LANGUAGE", "es")
+    llm = patch_pipeline(SearchResult([_passage(1)], best_relevance=0.8))
+    answer_question("How many hours must pass between two working days?")
+    assert llm.retriever.queries == ["¿Cuántas horas deben pasar entre jornadas?"]  # searched in Spanish
+    assert "Question: How many hours must pass between two working days?" in llm.prompts[0]  # answered as asked
+    assert "English" in llm.prompts[0]
+
+    answer_question("¿Cuántos días de vacaciones?")  # same language as the documents: no translation
+    assert llm.retriever.queries[-1] == "¿Cuántos días de vacaciones?"
+    assert len(llm.translations) == 1
+
+    monkeypatch.setattr(config, "DOC_LANGUAGE", "")
+    answer_question("How many hours?")
+    assert llm.retriever.queries[-1] == "How many hours?"

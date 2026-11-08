@@ -67,8 +67,9 @@ flowchart LR
 - **An index that stays in sync.** Chunk IDs (`file:page:chunk`) plus a content hash let the indexer add new chunks, **re-embed only chunks whose text changed** (a new version of the law), and **remove chunks of deleted PDFs**, never embedding anything twice. The sync logic is a pure function with its own tests.
 - **Measured, not guessed.** `eval/` holds 35 questions with known answers (30 answerable, 5 that aren't in the document). The script reports retrieval hit@5, MRR, answer accuracy (keyword check, then LLM-as-a-judge) and correct refusals, comparing **hybrid vs. vector-only** retrieval. CI runs it on every change; see [eval/results.md](eval/results.md).
 - **Runs locally or online with the same code.** Two small provider interfaces (embeddings, LLM). Locally: Ollama, no keys, documents never leave the machine. Online: any OpenAI-compatible API (Gemini's free tier for the public demo), via a dependency-free HTTP client with streaming and retries on rate limits.
+- **Cross-lingual questions.** The statute is in Spanish; a question in English is translated into Spanish *for the search only* (small embedding models and BM25 match far better within one language), and the answer is still written in English. Found by the end-to-end tests: English questions retrieved the wrong articles before this.
 - **Streaming UX.** The answer appears word by word; sources are known before the first token.
-- **Tested and reproducible.** 28 fast unit tests (no models needed; the OpenAI-compatible client is tested against a local fake server), end-to-end tests with the real model, linting, and CI that boots the real Codespaces container and the Docker image and asks them a question.
+- **Tested and reproducible.** 29 fast unit tests (no models needed; the OpenAI-compatible client is tested against a local fake server), end-to-end tests with the real model, linting, and CI that boots the real Codespaces container and the Docker image and asks them a question.
 
 ## Key design choices
 
@@ -119,6 +120,7 @@ python query_data.py "¿Cuánto dura el periodo de prueba de un técnico titulad
 | `OPENAI_BASE_URL` / `OPENAI_API_KEY` | Gemini's endpoint / – | For the `openai` providers |
 | `RAG_RETRIEVAL` | `hybrid` | `hybrid` or `vector` |
 | `RAG_MIN_RELEVANCE` | `0.45` | Refusal threshold (cosine similarity); calibrate it per embedding model |
+| `RAG_DOC_LANGUAGE` | `es` | Language of the documents; questions in another language are translated before searching (`""` disables) |
 | `RAG_JUDGE_MODEL` | the LLM | A stronger model to grade the evaluation |
 
 Rebuild with `python populate_database.py --reset` after changing the embedding model.
@@ -134,7 +136,7 @@ On first start the app downloads the PDF and builds the index through the API (a
 ## Evaluation and tests
 
 ```bash
-pytest -m "not llm"                         # 28 fast tests, no models needed
+pytest -m "not llm"                         # 29 fast tests, no models needed
 pytest -m llm -v                            # end-to-end with the real model
 python -m eval.run_eval                     # full evaluation → eval/results.md
 python -m eval.run_eval --retrieval-only    # retrieval metrics in seconds, to tune chunking or the threshold

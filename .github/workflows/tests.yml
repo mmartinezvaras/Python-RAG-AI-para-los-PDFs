@@ -105,9 +105,6 @@ jobs:
           echo "$out"
           echo "::notice title=CLI answer::$(echo "$out" | tr '\n' ' ')"
 
-      - name: End-to-end tests (LLM-as-a-judge)
-        run: pytest -m llm -v -s
-
       - name: Evaluation (35 questions, hybrid vs vector retrieval)
         run: |
           python -m eval.run_eval --out eval-results.md
@@ -117,6 +114,9 @@ jobs:
         with:
           name: evaluation
           path: eval-results.md
+
+      - name: End-to-end tests (LLM-as-a-judge)
+        run: pytest -m llm -v -s
 
       - name: Web demo smoke test + screenshot
         run: |

@@ -99,8 +99,27 @@ def _llm():
     return get_llm()
 
 
+TRANSLATE_PROMPT = """Translate this question into {target}. Keep legal and technical terms precise.
+Reply with the translated question only, no quotes and no explanations.
+
+Question: {question}"""
+
+_LANGUAGE_NAMES = {"es": "Spanish", "en": "English"}
+
+
+def search_query(question: str) -> str:
+    """The text used for retrieval: the question itself, or its translation into the
+    documents' language when it is asked in another language (cross-lingual retrieval)."""
+    target = config.DOC_LANGUAGE
+    if not target or detect_language(question) == target or target not in _LANGUAGE_NAMES:
+        return question
+    translated = _llm().complete(TRANSLATE_PROMPT.format(target=_LANGUAGE_NAMES[target], question=question))
+    translated = translated.strip().strip('"').splitlines()[0].strip() if translated.strip() else ""
+    return translated or question
+
+
 def retrieve(question: str, mode: str = config.RETRIEVAL_MODE) -> SearchResult:
-    return get_retriever().search(question, mode=mode)
+    return get_retriever().search(search_query(question), mode=mode)
 
 
 def stream_answer(question: str, mode: str = config.RETRIEVAL_MODE) -> tuple[RagAnswer, Iterator[str]]:

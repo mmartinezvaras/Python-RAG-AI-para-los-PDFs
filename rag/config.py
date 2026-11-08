@@ -48,6 +48,10 @@ CANDIDATES = int(os.getenv("RAG_CANDIDATES", "20"))  # per retriever, before fus
 # Cosine similarity of the best passage below which we answer "not in the documents"
 # without calling the LLM. Depends on the embedding model: calibrate it with eval/run_eval.py.
 MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.45"))
+# Language of the documents ("es" or "en"). Questions in the other language are translated
+# before searching (embeddings and BM25 match much better within one language); the answer
+# is still written in the question's language. Set it to "" to disable.
+DOC_LANGUAGE = os.getenv("RAG_DOC_LANGUAGE", "es").lower()
 
 # --- Web demo -----------------------------------------------------------------------------
 PUBLIC_DEMO = os.getenv("RAG_PUBLIC_DEMO") == "1"
