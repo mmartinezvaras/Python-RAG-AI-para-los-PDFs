@@ -43,7 +43,8 @@ pytestmark = [
 def test_answers_match_the_statute(question, expected, keywords, article):
     ans = answer_question(question)
     assert ans.grounded, f"relevance gate rejected it (best {ans.best_relevance:.2f})"
-    assert any(article in p.articles.split(",") for p in ans.passages), "right article not retrieved"
+    found = [p.articles for p in ans.passages]
+    assert any(article in a.split(",") for a in found), f"article {article} not retrieved; got {found}"
     # Same check as the evaluation: key figures first, the LLM judge only for paraphrases.
     assert judge(question, expected, ans.text, keywords), ans.text
 

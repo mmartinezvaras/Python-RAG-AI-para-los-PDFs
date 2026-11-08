@@ -154,4 +154,8 @@ jobs:
 
       # Last, so a flaky answer from the small model doesn't stop the screenshot and results above.
       - name: End-to-end tests (LLM-as-a-judge)
-        run: pytest -m llm -v -s
+        run: |
+          pkill -f "streamlit run" || true   # the demo from the screenshot step shares the index and Ollama
+          sleep 2
+          bash scripts/start_ollama.sh
+          pytest -m llm -v -s
