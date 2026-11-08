@@ -31,20 +31,21 @@ pytestmark = [
 
 
 @pytest.mark.parametrize(
-    "question, expected, article",
+    "question, expected, keywords, article",
     [
-        ("¿Cuántos días de vacaciones anuales retribuidas corresponden como mínimo?", "30 días naturales", "38"),
-        ("¿Cuál es la duración máxima de la jornada ordinaria semanal?", "40 horas semanales", "34"),
-        ("¿Cuántas horas extraordinarias se pueden hacer como máximo al año?", "80 horas", "35"),
+        ("¿Cuántos días de vacaciones anuales retribuidas corresponden como mínimo?", "30 días naturales", [["30", "treinta"]], "38"),
+        ("¿Cuál es la duración máxima de la jornada ordinaria semanal?", "40 horas semanales", [["40", "cuarenta"]], "34"),
+        ("¿Cuántas horas extraordinarias se pueden hacer como máximo al año?", "80 horas", [["80", "ochenta"]], "35"),
         # Cross-lingual: English question, Spanish document. Harder English cases are tracked in eval/.
-        ("How many days of paid annual leave does a worker get?", "30 calendar days", "38"),
+        ("How many days of paid annual leave does a worker get?", "30 calendar days", [["30", "thirty"]], "38"),
     ],
 )
-def test_answers_match_the_statute(question, expected, article):
+def test_answers_match_the_statute(question, expected, keywords, article):
     ans = answer_question(question)
     assert ans.grounded, f"relevance gate rejected it (best {ans.best_relevance:.2f})"
     assert any(article in p.articles.split(",") for p in ans.passages), "right article not retrieved"
-    assert judge(question, expected, ans.text), ans.text
+    # Same check as the evaluation: key figures first, the LLM judge only for paraphrases.
+    assert judge(question, expected, ans.text, keywords), ans.text
 
 
 def test_refuses_questions_outside_the_documents():
