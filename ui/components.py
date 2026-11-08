@@ -91,6 +91,12 @@ def not_found_card(text: str, best_relevance: float, threshold: float) -> str:
     )
 
 
+def reflow(text: str) -> str:
+    """Undo the PDF's hard line wraps but keep real breaks: before a numbered or lettered
+    paragraph ("2. ", "b) ") or a new article."""
+    return re.sub(r"\n(?!\s*(?:\d+\.\s|[a-zñ]\)\s|Art[ií]culo\s))", " ", text.strip())
+
+
 def _article_label(articles: str) -> tuple[str, str]:
     parts = [a for a in articles.split(",") if a]
     if not parts:
@@ -134,7 +140,7 @@ def source_card(p: Passage, mark: str | None, link: str | None, index: int = 0) 
         + f'<span class="lx-rel" title="Similitud con la pregunta">'
         f'<span class="lx-meter" style="--v:{meter * 100:.0f}%"><i></i></span>relevancia {_decimal(p.relevance)}</span>'
         "</div>"
-        f'<details class="lx-text"><summary><span class="lx-excerpt"><span class="lx-hl">{esc(p.text)}</span></span>'
+        f'<details class="lx-text"><summary><span class="lx-excerpt"><span class="lx-hl">{esc(reflow(p.text))}</span></span>'
         '<span class="lx-more"></span></summary></details>'
         f"{boe}"
         "</div>"

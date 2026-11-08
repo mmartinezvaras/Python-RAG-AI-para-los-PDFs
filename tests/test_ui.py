@@ -16,6 +16,16 @@ def test_text_from_pdf_or_model_cannot_inject_html_or_markdown():
     assert "<img" not in html
 
 
+def test_pdf_line_wraps_are_undone_but_paragraphs_kept():
+    from ui.components import reflow
+
+    text = "Artículo 38. Vacaciones.\n1. El periodo de vacaciones\nanuales retribuidas.\n2. El calendario de\nla empresa.\na) Primero."
+    assert reflow(text) == (
+        "Artículo 38. Vacaciones.\n1. El periodo de vacaciones anuales retribuidas.\n"
+        "2. El calendario de la empresa.\na) Primero."
+    )
+
+
 def test_citations_become_links_to_their_source():
     html = format_answer("Son **treinta días** [1][2].\n\nOtra frase.")
     assert "<strong>treinta días</strong>" in html

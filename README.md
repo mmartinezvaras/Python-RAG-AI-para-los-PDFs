@@ -73,7 +73,7 @@ flowchart LR
 - **Cross-lingual questions.** The statute is in Spanish; a question in English is translated into Spanish *for the search only* (small embedding models and BM25 match far better within one language), and the answer is still written in English. Found by the end-to-end tests: English questions retrieved the wrong articles before this.
 - **Streaming UX.** The answer appears word by word; sources are known before the first token.
 - **Interface designed, not defaulted.** An official-gazette look (navy ink, serif for the text of the law, violet stamp ink for citations) with light, night and automatic themes. Motion follows [Emil Kowalski's design-engineering rules](https://github.com/emilkowalski/skills): one orchestrated moment (sources enter 50 ms apart, then the cited one gets a "Citado" stamp), strong ease-out curves under 400 ms, press feedback on buttons, nothing re-animates when you only switch the theme, and reduced-motion users get fades instead of movement. All PDF and model text is escaped before it reaches the page (tested).
-- **Tested and reproducible.** 38 fast unit tests (no models needed; the OpenAI-compatible client is tested against a local fake server), end-to-end tests with the real model, linting, and CI that boots the real Codespaces container and the Docker image and asks them a question.
+- **Tested and reproducible.** 39 fast unit tests (no models needed; the OpenAI-compatible client is tested against a local fake server), end-to-end tests with the real model, linting, and CI that boots the real Codespaces container and the Docker image and asks them a question.
 
 ## Results
 
@@ -154,7 +154,7 @@ On first start the app downloads the PDF and builds the index through the API (a
 ## Evaluation and tests
 
 ```bash
-pytest -m "not llm"                         # 38 fast tests, no models needed
+pytest -m "not llm"                         # 39 fast tests, no models needed
 pytest -m llm -v                            # end-to-end with the real model
 python -m eval.run_eval                     # full evaluation → eval/results.md
 python -m eval.run_eval --retrieval-only    # retrieval metrics in seconds, to tune chunking or the threshold

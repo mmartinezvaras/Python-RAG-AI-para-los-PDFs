@@ -265,7 +265,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .lx-text summary:focus-visible { outline: 2px solid var(--lx-seal); outline-offset: 4px; border-radius: 6px; }
 .lx-boe {
   display: inline-flex; align-items: center; margin-top: .6rem; font-size: .85rem; font-weight: 600;
-  color: var(--lx-seal) !important; text-decoration: none; border-bottom: 1px solid transparent;
+  color: var(--lx-seal) !important; text-decoration: none !important; border-bottom: 1px solid transparent;
 }
 @media (hover: hover) and (pointer: fine) { .lx-boe:hover { border-bottom-color: var(--lx-seal); } }
 .lx-boe .ms { font-size: 1.05rem; margin-right: .3em; }
