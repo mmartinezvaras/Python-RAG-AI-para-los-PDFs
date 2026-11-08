@@ -14,7 +14,7 @@ from functools import lru_cache
 
 from rag import config
 from rag.ingest import format_articles
-from rag.retrieval import Passage, Retriever, SearchResult
+from rag.retrieval import Passage, Retriever, SearchResult, tokenize
 
 PROMPT_TEMPLATE = """You answer questions using ONLY the numbered passages below.
 
@@ -90,6 +90,23 @@ class RagAnswer:
     def cited(self) -> list[Passage]:
         by_number = {p.number: p for p in self.passages}
         return [by_number[n] for n in cited_numbers(self.text) if n in by_number]
+
+    @property
+    def matching(self) -> Passage | None:
+        """When the model gave no [n] citations: the passage whose wording the answer follows."""
+        return best_matching_passage(self.text, self.passages)
+
+
+def best_matching_passage(answer_text: str, passages: list[Passage], min_overlap: float = 0.5) -> Passage | None:
+    """The passage that shares most of the answer's content words (at least ``min_overlap`` of
+    them). Small models often answer correctly but forget the [n] markers; this recovers which
+    passage the answer came from without asking the model again."""
+    words = set(tokenize(re.sub(r"\[\d+\]", " ", answer_text)))
+    if not words or not passages:
+        return None
+    scored = [(len(words & set(tokenize(p.text))) / len(words), -p.number, p) for p in passages]
+    score, _, best = max(scored, key=lambda t: (t[0], t[1]))
+    return best if score >= min_overlap else None
 
 
 @lru_cache(maxsize=1)

@@ -82,8 +82,10 @@ def render_result(answer, slot, animate: bool = True):
         html(ui.not_found_card(answer.text, answer.best_relevance, config.MIN_RELEVANCE), slot)
         return
     html(ui.answer_card(answer.text), slot)
-    cited = [p.number for p in answer.cited]
-    html(ui.sources_section(answer.passages, cited, lambda p: page_link(p.source, p.page), animate=animate))
+    marks = {p.number: "cited" for p in answer.cited}
+    if not marks and answer.matching:
+        marks = {answer.matching.number: "match"}
+    html(ui.sources_section(answer.passages, marks, lambda p: page_link(p.source, p.page), animate=animate))
 
 
 # ---------- Header ----------

@@ -22,7 +22,7 @@ else:
 
 with sync_playwright() as p:
     browser = p.chromium.launch()
-    page = browser.new_page(viewport={"width": 1280, "height": 900}, color_scheme="light", device_scale_factor=2)
+    page = browser.new_page(viewport={"width": 1280, "height": 1500}, color_scheme="light", device_scale_factor=2)
     page.goto(URL)
     page.get_by_text("¿Qué dice el Estatuto de los Trabajadores?").wait_for(timeout=120_000)
     page.get_by_role("button", name=EXAMPLE_BUTTON).click()

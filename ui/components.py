@@ -98,7 +98,14 @@ def _article_label(articles: str) -> tuple[str, str]:
     return ("Art.", parts[0]) if len(parts) == 1 else ("Arts.", f"{parts[0]}–{parts[-1]}")
 
 
-def source_card(p: Passage, cited: bool, link: str | None, index: int = 0) -> str:
+STAMPS = {
+    "cited": ("Citado", "Fuente citada en la respuesta"),
+    "match": ("Coincide", "El texto de esta fuente coincide con la respuesta"),
+}
+
+
+def source_card(p: Passage, mark: str | None, link: str | None, index: int = 0) -> str:
+    """``mark``: "cited" (the model cited it), "match" (the answer follows its wording) or None."""
     prefix, number = _article_label(p.articles)
     page = f"página {int(p.page) + 1}" if p.page is not None else ""
     if number:
@@ -113,9 +120,12 @@ def source_card(p: Passage, cited: bool, link: str | None, index: int = 0) -> st
         if link
         else ""
     )
-    stamp = '<span class="lx-stamp" aria-label="Fuente citada en la respuesta">Citado</span>' if cited else ""
+    stamp = ""
+    if mark in STAMPS:
+        label, aria = STAMPS[mark]
+        stamp = f'<span class="lx-stamp lx-stamp-{mark}" aria-label="{aria}">{label}</span>'
     return (
-        f'<article class="lx-src{" is-cited" if cited else ""}" id="lx-src-{p.number}" style="--i:{index}">'
+        f'<article class="lx-src{" is-cited" if mark else ""}" id="lx-src-{p.number}" style="--i:{index}">'
         f'<div class="lx-src-margin"><span class="lx-src-num" title="Cita [{p.number}]">{p.number}</span>{margin}</div>'
         '<div class="lx-src-body">'
         '<div class="lx-src-meta">'
@@ -135,20 +145,25 @@ def source_card(p: Passage, cited: bool, link: str | None, index: int = 0) -> st
 
 def sources_section(
     passages: Iterable[Passage],
-    cited_numbers: list[int],
+    marks: dict[int, str],
     link_for: Callable[[Passage], str | None],
     animate: bool = True,
 ) -> str:
-    """``animate=False`` when re-drawing an answer the user has already seen (theme switch)."""
+    """``marks``: passage number → "cited" or "match". ``animate=False`` when re-drawing an
+    answer the user has already seen (e.g. after switching the theme)."""
     passages = list(passages)
-    ordered = sorted(passages, key=lambda p: (p.number not in cited_numbers, p.number))
-    cards = "".join(source_card(p, p.number in cited_numbers, link_for(p), i) for i, p in enumerate(ordered))
-    note = (
-        ""
-        if cited_numbers
-        else f'<p class="lx-note">{icon("info")}El modelo no ha marcado qué fragmento usó; '
-        "están ordenados por relevancia.</p>"
-    )
+    ordered = sorted(passages, key=lambda p: (p.number not in marks, p.number))
+    cards = "".join(source_card(p, marks.get(p.number), link_for(p), i) for i, p in enumerate(ordered))
+    if "cited" in marks.values():
+        note = ""
+    elif marks:
+        note = (
+            f'<p class="lx-note">{icon("info")}El modelo no ha marcado la cita; se destaca el fragmento '
+            "cuyo texto coincide con la respuesta.</p>"
+        )
+    else:
+        note = f'<p class="lx-note">{icon("info")}El modelo no ha marcado qué fragmento usó; están ordenados por relevancia.</p>'
+
     return (
         f'<section class="lx-sources{"" if animate else " lx-static"}">'
         f'<div class="lx-h" role="heading" aria-level="2">{icon("menu_book")}Fuentes<span class="lx-count">{len(passages)}</span></div>'

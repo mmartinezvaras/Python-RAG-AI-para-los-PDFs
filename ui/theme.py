@@ -74,6 +74,10 @@ html { -webkit-tap-highlight-color: transparent; }
   transition: background-color 250ms ease, color 250ms ease;
 }
 [data-testid="stHeader"] { background: transparent; }
+.stApp p, .stApp li, .stApp label, .stApp a, .stApp button, .stApp input, .stApp small,
+[data-testid="stMarkdownContainer"], [data-testid="stCaptionContainer"] {
+  font-family: "Public Sans", system-ui, sans-serif;
+}
 [data-testid="stSidebar"] {
   background: var(--lx-sheet);
   border-right: 1px solid var(--lx-rule);
@@ -85,16 +89,18 @@ html { -webkit-tap-highlight-color: transparent; }
 .stApp hr { border-color: var(--lx-rule); }
 [data-testid="stSidebar"] h3 { font-size: 1rem; font-weight: 600; }
 
-/* Text input */
-[data-testid="stTextInput"] [data-baseweb="input"] {
-  background: var(--lx-field);
-  border: 1.5px solid var(--lx-rule);
-  border-radius: 14px;
+/* Text input. Streamlit wraps the field in several containers with their own background and
+   border: the outer one gets ours, everything inside is made clear. */
+[data-testid="stTextInputRootElement"] {
+  background: var(--lx-field) !important;
+  border: 1.5px solid var(--lx-rule) !important;
+  border-radius: 14px !important;
   box-shadow: 0 1px 2px var(--lx-shadow);
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
-[data-testid="stTextInput"] [data-baseweb="input"]:focus-within {
-  border-color: var(--lx-seal);
+[data-testid="stTextInputRootElement"] * { background-color: transparent !important; border-color: transparent !important; }
+[data-testid="stTextInputRootElement"]:focus-within {
+  border-color: var(--lx-seal) !important;
   box-shadow: 0 0 0 4px var(--lx-seal-soft);
 }
 [data-testid="stTextInput"] [data-baseweb="base-input"], [data-testid="stTextInput"] input {
@@ -152,6 +158,7 @@ html { -webkit-tap-highlight-color: transparent; }
   font-size: clamp(1.9rem, 4.2vw, 2.6rem); line-height: 1.12; letter-spacing: -0.02em;
   margin: 0 0 .5rem; padding: 0; color: var(--lx-ink);
 }
+.lx-hero { margin-bottom: 1.4rem; }
 .lx-hero p { color: var(--lx-ink-2); font-size: 1.02rem; line-height: 1.55; max-width: 62ch; margin: 0; }
 .lx-hero p strong { color: var(--lx-ink); font-weight: 600; }
 
@@ -273,6 +280,7 @@ html { -webkit-tap-highlight-color: transparent; }
   /* Lands after its card has entered (card delay + 200 ms) */
   animation: lx-stamp 380ms var(--lx-ease-out) both; animation-delay: calc(var(--i, 0) * 50ms + 200ms);
 }
+.lx-stamp-match { border-style: dashed; box-shadow: none; opacity: .8; }
 /* Re-drawing a stored answer (e.g. after switching the theme) is not news: no entrance motion */
 .lx-static .lx-src, .lx-static .lx-stamp { animation: none; }
 

@@ -12,7 +12,7 @@ def _p(n, articles="38", relevance=0.74, text="Artículo 38. Vacaciones anuales.
 def test_text_from_pdf_or_model_cannot_inject_html_or_markdown():
     assert esc("<script>alert(1)</script>") == "&lt;script&gt;alert(1)&lt;/script&gt;"
     assert esc("art_38 *nota* [x](y) $5") == "art&#95;38 &#42;nota&#42; &#91;x&#93;(y) &#36;5"
-    html = sources_section([_p(1, text="<img src=x onerror=alert(1)>")], [], lambda p: None)
+    html = sources_section([_p(1, text="<img src=x onerror=alert(1)>")], {}, lambda p: None)
     assert "<img" not in html
 
 
@@ -30,18 +30,24 @@ def test_streaming_answer_has_a_caret_and_final_one_does_not():
 
 def test_cited_sources_come_first_with_a_stamp_and_a_stagger_index():
     html = sources_section(
-        [_p(1, "34"), _p(2, "37,38", 0.7)], [2], lambda p: f"https://boe.example/x.pdf#page={p.page + 1}"
+        [_p(1, "34"), _p(2, "37,38", 0.7)], {2: "cited"}, lambda p: f"https://boe.example/x.pdf#page={p.page + 1}"
     )
     assert html.index('id="lx-src-2"') < html.index('id="lx-src-1"')  # cited first
-    assert html.count("lx-stamp") == 1 and "Arts.</span>37–38" in html
+    assert html.count('class="lx-stamp') == 1 and ">Citado<" in html and "Arts.</span>37–38" in html
     assert 'style="--i:0"' in html and 'style="--i:1"' in html
     assert "Ver en el BOE, página 39" in html and "relevancia 0,70" in html
     assert 'role="heading"' in html  # not <h2>: Streamlit decorates real headings
 
 
+def test_a_matching_source_gets_its_own_stamp_and_an_explanation():
+    html = sources_section([_p(1), _p(2)], {2: "match"}, lambda p: None)
+    assert ">Coincide<" in html and ">Citado<" not in html and "coincide con la respuesta" in html
+    assert "ordenados por relevancia" in sources_section([_p(1)], {}, lambda p: None)
+
+
 def test_redrawing_a_stored_answer_skips_the_entrance_motion():
-    assert "lx-static" in sources_section([_p(1)], [1], lambda p: None, animate=False)
-    assert "lx-static" not in sources_section([_p(1)], [1], lambda p: None)
+    assert "lx-static" in sources_section([_p(1)], {1: "cited"}, lambda p: None, animate=False)
+    assert "lx-static" not in sources_section([_p(1)], {1: "cited"}, lambda p: None)
 
 
 def test_not_found_explains_why_the_model_was_not_called():

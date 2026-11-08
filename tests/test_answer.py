@@ -83,6 +83,16 @@ def test_answer_streams_and_records_citations(patch_pipeline):
     assert ans.grounded
 
 
+def test_best_matching_passage_recovers_the_source_of_an_uncited_answer():
+    vacations = _passage(1)
+    vacations.text = "Artículo 38. El periodo de vacaciones anuales retribuidas no será inferior a treinta días naturales."
+    trial = _passage(2)
+    trial.text = "Artículo 14. El periodo de prueba no podrá exceder de seis meses para los técnicos titulados."
+    answer = "Según el artículo 38, las vacaciones anuales retribuidas son de al menos treinta días naturales."
+    assert answer_mod.best_matching_passage(answer, [trial, vacations]) is vacations
+    assert answer_mod.best_matching_passage("Una respuesta sin relación alguna con nada", [trial, vacations]) is None
+
+
 def test_low_relevance_skips_the_llm(patch_pipeline):
     llm = patch_pipeline(SearchResult([_passage(1, relevance=0.1)], best_relevance=config.MIN_RELEVANCE - 0.01))
     ans = answer_question("¿Quién ganó el Tour de Francia en 2018?")
