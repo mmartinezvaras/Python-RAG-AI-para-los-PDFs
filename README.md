@@ -71,6 +71,18 @@ flowchart LR
 - **Streaming UX.** The answer appears word by word; sources are known before the first token.
 - **Tested and reproducible.** 29 fast unit tests (no models needed; the OpenAI-compatible client is tested against a local fake server), end-to-end tests with the real model, linting, and CI that boots the real Codespaces container and the Docker image and asks them a question.
 
+## Results
+
+From the first full evaluation in CI (Llama 3.2 3B and `nomic-embed-text` on a CPU runner; latest numbers in [eval/results.md](eval/results.md)):
+
+| | Hybrid (vector + BM25) | Vector only |
+|---|---|---|
+| Right article retrieved (hit@5) | **87%** | 80% |
+| Correct answers | **80%** | 70% |
+| Off-topic questions correctly refused | 100% | 100% |
+
+What the misses taught: questions whose wording doesn't share vocabulary with the law ("¿a partir de qué edad se puede trabajar?" vs. "menores de dieciséis años") are still hard to retrieve, and the 3B model sometimes picks the wrong passage when two articles are similar (objective vs. unfair dismissal). A reranker and a larger model are the obvious next experiments, and the evaluation is there to measure them.
+
 ## Key design choices
 
 | Decision | Choice | Why |
@@ -119,7 +131,7 @@ python query_data.py "¿Cuánto dura el periodo de prueba de un técnico titulad
 | `RAG_LLM_MODEL` / `RAG_EMBED_MODEL` | `llama3.2:3b` / `nomic-embed-text` | Model names for the chosen providers |
 | `OPENAI_BASE_URL` / `OPENAI_API_KEY` | Gemini's endpoint / – | For the `openai` providers |
 | `RAG_RETRIEVAL` | `hybrid` | `hybrid` or `vector` |
-| `RAG_MIN_RELEVANCE` | `0.45` | Refusal threshold (cosine similarity); calibrate it per embedding model |
+| `RAG_MIN_RELEVANCE` | `0.64` | Refusal threshold (cosine similarity); calibrate it per embedding model |
 | `RAG_DOC_LANGUAGE` | `es` | Language of the documents; questions in another language are translated before searching (`""` disables) |
 | `RAG_JUDGE_MODEL` | the LLM | A stronger model to grade the evaluation |
 

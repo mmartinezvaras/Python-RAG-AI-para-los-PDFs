@@ -27,7 +27,7 @@ Rules:
 Passages:
 {context}
 
-Question: {question}
+Question: {question}{translation}
 Answer:"""
 
 NOT_FOUND = {
@@ -54,10 +54,15 @@ def passage_label(p: Passage) -> str:
     return " · ".join(parts)
 
 
-def build_prompt(question: str, passages: list[Passage]) -> str:
+def build_prompt(question: str, passages: list[Passage], translated: str | None = None) -> str:
+    """``translated``: the question in the documents' language, when it was asked in another
+    one. Small models match the passages much better with both versions in front of them."""
     context = "\n\n".join(f"[{p.number}] ({passage_label(p)})\n{p.text}" for p in passages)
     language = "Spanish" if detect_language(question) == "es" else "English"
-    return PROMPT_TEMPLATE.format(context=context, question=question, language=language)
+    extra = ""
+    if translated and translated != question:
+        extra = f"\n(Same question in the language of the passages: {translated})"
+    return PROMPT_TEMPLATE.format(context=context, question=question, translation=extra, language=language)
 
 
 def cited_numbers(text: str) -> list[int]:
@@ -118,14 +123,15 @@ def search_query(question: str) -> str:
     return translated or question
 
 
-def retrieve(question: str, mode: str = config.RETRIEVAL_MODE) -> SearchResult:
-    return get_retriever().search(search_query(question), mode=mode)
+def retrieve(question: str, mode: str = config.RETRIEVAL_MODE, query: str | None = None) -> SearchResult:
+    return get_retriever().search(query or search_query(question), mode=mode)
 
 
 def stream_answer(question: str, mode: str = config.RETRIEVAL_MODE) -> tuple[RagAnswer, Iterator[str]]:
     """Start answering. Returns the answer object (passages already filled) and a generator
     of text pieces; when the generator is exhausted, ``answer.text`` holds the full text."""
-    result = retrieve(question, mode)
+    query = search_query(question)
+    result = retrieve(question, mode, query=query)
     answer = RagAnswer(question=question, passages=result.passages, best_relevance=result.best_relevance)
 
     if not result.passages or result.best_relevance < config.MIN_RELEVANCE:
@@ -134,7 +140,7 @@ def stream_answer(question: str, mode: str = config.RETRIEVAL_MODE) -> tuple[Rag
         answer.passages = []
         return answer, iter([answer.text])
 
-    prompt = build_prompt(question, result.passages)
+    prompt = build_prompt(question, result.passages, translated=query)
 
     def generate() -> Iterator[str]:
         pieces = []

@@ -69,7 +69,7 @@ def test_prompt_numbers_and_labels_the_passages():
     prompt = build_prompt("¿Cuántos días?", [_passage(1), _passage(2, articles="37,38")])
     assert "[1] (estatuto_trabajadores.pdf · p. 2 · Art. 38)" in prompt
     assert "[2] (estatuto_trabajadores.pdf · p. 3 · Art. 37–38)" in prompt
-    assert "Spanish" in prompt and "Question: ¿Cuántos días?" in prompt
+    assert "Spanish" in prompt and "Question: ¿Cuántos días?\nAnswer:" in prompt  # no translation line
 
 
 def test_answer_streams_and_records_citations(patch_pipeline):
@@ -105,6 +105,7 @@ def test_questions_in_another_language_are_translated_for_retrieval(patch_pipeli
     assert llm.retriever.queries == ["¿Cuántas horas deben pasar entre jornadas?"]  # searched in Spanish
     assert "Question: How many hours must pass between two working days?" in llm.prompts[0]  # answered as asked
     assert "English" in llm.prompts[0]
+    assert "language of the passages: ¿Cuántas horas deben pasar entre jornadas?" in llm.prompts[0]
 
     answer_question("¿Cuántos días de vacaciones?")  # same language as the documents: no translation
     assert llm.retriever.queries[-1] == "¿Cuántos días de vacaciones?"

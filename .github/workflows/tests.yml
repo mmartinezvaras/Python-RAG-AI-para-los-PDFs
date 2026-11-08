@@ -119,9 +119,6 @@ jobs:
           name: evaluation
           path: eval-results.md
 
-      - name: End-to-end tests (LLM-as-a-judge)
-        run: pytest -m llm -v -s
-
       - name: Web demo smoke test + screenshot
         run: |
           pip install --quiet playwright
@@ -154,3 +151,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Add demo screenshot and evaluation results"
           git push origin "HEAD:${{ github.head_ref || github.ref_name }}"
+
+      # Last, so a flaky answer from the small model doesn't stop the screenshot and results above.
+      - name: End-to-end tests (LLM-as-a-judge)
+        run: pytest -m llm -v -s
