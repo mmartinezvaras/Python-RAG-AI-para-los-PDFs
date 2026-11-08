@@ -29,6 +29,19 @@ jobs:
       - name: Setup (deps, Ollama, models, index)
         run: bash scripts/setup.sh
 
+      # The BOE server sometimes times out from Codespaces; keep the PDF in the repository so the
+      # demo never depends on it. Committed once, the first time CI downloads it.
+      - name: Commit the Workers' Statute PDF if it isn't in the repository yet
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          if git ls-files --error-unmatch data/estatuto_trabajadores.pdf > /dev/null 2>&1; then exit 0; fi
+          head -c 4 data/estatuto_trabajadores.pdf | grep -q "%PDF"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/estatuto_trabajadores.pdf
+          git commit -qm "Add the Workers' Statute PDF (BOE consolidated text) to the repository"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
       - name: Open the demo, ask, switch to night theme
         run: |
           pip install --quiet playwright

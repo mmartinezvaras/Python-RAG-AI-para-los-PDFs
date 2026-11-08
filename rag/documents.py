@@ -10,6 +10,8 @@ Run ``python -m rag.documents`` to download anything missing.
 
 from __future__ import annotations
 
+import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,8 +49,34 @@ def page_link(filename: str, page_index: int | None) -> str | None:
     return f"{doc.url}#page={page_index + 1}" if page_index is not None else doc.url
 
 
+class DownloadError(RuntimeError):
+    pass
+
+
+def _fetch(url: str, attempts: int = 4, timeout: int = 60) -> bytes:
+    """GET with retries: the BOE server sometimes doesn't answer cloud machines on the first try."""
+    delay = 3.0
+    for attempt in range(1, attempts + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (rag-over-pdfs demo)"})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read()
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            if attempt == attempts:
+                raise DownloadError(
+                    f"Could not download {url} after {attempts} attempts ({exc}). The server may be busy: "
+                    "try again in a few minutes, or download the PDF in a browser and put it in data/."
+                ) from exc
+            print(f"   attempt {attempt} failed ({exc}); retrying in {delay:.0f} s")
+            time.sleep(delay)
+            delay *= 2
+    raise DownloadError(url)  # pragma: no cover
+
+
 def download_missing(data_path: Path = config.DATA_PATH) -> list[str]:
-    """Download the dataset PDFs that are not in ``data_path`` yet. Returns what was downloaded."""
+    """Download the dataset PDFs that are not in ``data_path`` yet. Returns what was downloaded.
+
+    The Workers' Statute PDF is committed to the repository, so normally nothing is downloaded."""
     data_path.mkdir(parents=True, exist_ok=True)
     downloaded = []
     for doc in DOCUMENTS:
@@ -56,9 +84,7 @@ def download_missing(data_path: Path = config.DATA_PATH) -> list[str]:
         if target.exists() and target.stat().st_size > 0:
             continue
         print(f"⬇️  Downloading {doc.title}")
-        req = urllib.request.Request(doc.url, headers={"User-Agent": "rag-over-pdfs-demo"})
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            content = resp.read()
+        content = _fetch(doc.url)
         if not content.startswith(b"%PDF"):
             raise RuntimeError(f"{doc.url} did not return a PDF")
         tmp = target.with_suffix(".part")
