@@ -117,7 +117,9 @@ html { -webkit-tap-highlight-color: transparent; }
   box-shadow: 0 1px 2px var(--lx-shadow);
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
-[data-testid="stTextInputRootElement"] * { background-color: transparent !important; border-color: transparent !important; }
+[data-testid="stTextInputRootElement"] div, [data-testid="stTextInputRootElement"] input {
+  background-color: transparent !important; border-color: transparent !important;
+}
 [data-testid="stTextInputRootElement"]:focus-within {
   border-color: var(--lx-seal) !important;
   box-shadow: 0 0 0 4px var(--lx-halo);
@@ -150,12 +152,13 @@ html { -webkit-tap-highlight-color: transparent; }
   color: var(--lx-seal);
 }
 /* Selected theme. Streamlit paints it with primaryColor (black), invisible on the night background. */
-[data-testid="stButtonGroup"] button[kind*="Active"], [data-testid="stButtonGroup"] button[aria-checked="true"],
-[data-testid="stBaseButton-segmented_controlActive"] {
+[data-testid="stButtonGroup"] button[aria-checked="true"], [data-testid="stBaseButton-segmented_controlActive"] {
   background: var(--lx-seal) !important; border-color: var(--lx-seal) !important;
 }
-[data-testid="stButtonGroup"] button[kind*="Active"] *, [data-testid="stBaseButton-segmented_controlActive"] *,
-[data-testid="stButtonGroup"] button[kind*="Active"], [data-testid="stBaseButton-segmented_controlActive"] {
+[data-testid="stBaseButton-segmented_controlActive"], [data-testid="stBaseButton-segmented_controlActive"] p,
+[data-testid="stBaseButton-segmented_controlActive"] span, [data-testid="stBaseButton-segmented_controlActive"] div,
+[data-testid="stButtonGroup"] button[aria-checked="true"], [data-testid="stButtonGroup"] button[aria-checked="true"] p,
+[data-testid="stButtonGroup"] button[aria-checked="true"] span {
   color: var(--lx-sheet) !important;
 }
 

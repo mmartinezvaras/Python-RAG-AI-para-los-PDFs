@@ -43,6 +43,11 @@ with sync_playwright() as p:
     page.get_by_role("heading", name="Fuentes").wait_for(timeout=60_000)
     time.sleep(2)
     page.screenshot(path="demo-dark.png", full_page=True)
+    # Contrast check of the selected theme button (text vs background), printed for the log.
+    print(page.evaluate("""() => [...document.querySelectorAll('[data-testid="stButtonGroup"] button')].map(b => {
+        const t = b.querySelector('p') || b; const cs = getComputedStyle(t), bs = getComputedStyle(b);
+        return `${b.getAttribute('data-testid')} "${b.innerText.trim()}": text ${cs.color} on ${bs.backgroundColor}`;
+    }).join('\\n')"""))
     browser.close()
 
 print("✅ Web demo works in light and night themes")

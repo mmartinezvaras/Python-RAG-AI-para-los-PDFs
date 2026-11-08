@@ -41,7 +41,9 @@ MAX_UPLOAD_MB = 25
 
 st.set_page_config(page_title="Pregunta al Estatuto de los Trabajadores", page_icon=":material/balance:")
 # The theme switch can be cleared (None): fall back to following the system setting.
-st.markdown(page_css(st.session_state.get("theme") or "auto"), unsafe_allow_html=True)
+# st.html, not st.markdown: CSS is full of "*" (selectors, calc, comments), which Markdown would
+# turn into emphasis and break the stylesheet.
+st.html(page_css(st.session_state.get("theme") or "auto"))
 
 
 # ---------- Helpers ----------
