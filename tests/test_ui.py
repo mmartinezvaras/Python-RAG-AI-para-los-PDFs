@@ -75,14 +75,13 @@ def test_theme_modes():
     assert "prefers-reduced-motion" in auto
 
 
-def test_theme_uses_only_marcos_palette():
+def test_theme_uses_only_the_palette():
     import re
 
     from ui import theme
 
-    palette = {theme.NEGRO, theme.GRAFITO, theme.PLATA, theme.INDIGO, theme.BLANCO}
-    derived = {"#141414", "#1C1C1C"}  # Negro mixed with Grafito
+    allowed = theme.PALETTE | set(theme.DERIVED)
     for tokens in (LIGHT, DARK):
         for value in tokens.values():
             for hex_colour in re.findall(r"#[0-9A-Fa-f]{6}", value):
-                assert hex_colour.upper() in palette | derived, hex_colour
+                assert hex_colour.upper() in allowed, hex_colour

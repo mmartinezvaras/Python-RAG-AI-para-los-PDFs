@@ -3,7 +3,7 @@ maxUploadSize = 25
 
 [theme]
 base = "light"
-primaryColor = "#000000"
+primaryColor = "#651926"
 
 [client]
 toolbarMode = "minimal"
