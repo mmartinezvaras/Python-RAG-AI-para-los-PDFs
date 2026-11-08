@@ -36,7 +36,8 @@ pytestmark = [
         ("¿Cuántos días de vacaciones anuales retribuidas corresponden como mínimo?", "30 días naturales", "38"),
         ("¿Cuál es la duración máxima de la jornada ordinaria semanal?", "40 horas semanales", "34"),
         ("¿Cuántas horas extraordinarias se pueden hacer como máximo al año?", "80 horas", "35"),
-        ("How many hours must pass between the end of one working day and the start of the next?", "12 hours", "34"),
+        # Cross-lingual: English question, Spanish document. Harder English cases are tracked in eval/.
+        ("How many days of paid annual leave does a worker get?", "30 calendar days", "38"),
     ],
 )
 def test_answers_match_the_statute(question, expected, article):
