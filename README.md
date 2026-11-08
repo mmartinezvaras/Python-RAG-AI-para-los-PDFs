@@ -73,15 +73,17 @@ flowchart LR
 
 ## Results
 
-From the first full evaluation in CI (Llama 3.2 3B and `nomic-embed-text` on a CPU runner; latest numbers in [eval/results.md](eval/results.md)):
+Evaluation in CI with Llama 3.2 3B and `nomic-embed-text` on a CPU runner (full report with every miss in [eval/results.md](eval/results.md)):
 
 | | Hybrid (vector + BM25) | Vector only |
 |---|---|---|
 | Right article retrieved (hit@5) | **87%** | 80% |
-| Correct answers | **80%** | 70% |
+| Correct answers | **77%** | 70% |
 | Off-topic questions correctly refused | 100% | 100% |
 
-What the misses taught: questions whose wording doesn't share vocabulary with the law ("¿a partir de qué edad se puede trabajar?" vs. "menores de dieciséis años") are still hard to retrieve, and the 3B model sometimes picks the wrong passage when two articles are similar (objective vs. unfair dismissal). A reranker and a larger model are the obvious next experiments, and the evaluation is there to measure them.
+With 30 answerable questions each one is about 3 points, and the 3B model varies by a question or two between runs, so read the gap, not the decimals.
+
+What the evaluation caught along the way: English questions retrieved the wrong articles (fixed by translating the query), and showing the model that translation then made it answer in Spanish (fixed by ending the prompt with the answer language). What the remaining misses teach: questions whose wording doesn't share vocabulary with the law ("¿a partir de qué edad se puede trabajar?" vs. "menores de dieciséis años") are still hard to retrieve, and the 3B model sometimes picks the wrong passage when two articles are similar (objective vs. unfair dismissal). A reranker and a larger model are the obvious next experiments, and the evaluation is there to measure them.
 
 ## Key design choices
 
