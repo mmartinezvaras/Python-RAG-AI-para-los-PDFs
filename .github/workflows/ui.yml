@@ -1,0 +1,47 @@
+name: ui
+
+# Quick visual check of the web demo (about 10 minutes): starts the real app and saves
+# screenshots in the light and night themes as an artifact.
+on:
+  push:
+    paths:
+      - "app.py"
+      - "ui/**"
+      - ".streamlit/**"
+      - ".github/scripts/screenshot.py"
+      - ".github/workflows/ui.yml"
+  workflow_dispatch:
+
+jobs:
+  screenshots:
+    name: Web demo screenshots (light + night)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Setup (deps, Ollama, models, index)
+        run: bash scripts/setup.sh
+
+      - name: Open the demo, ask, switch to night theme
+        run: |
+          pip install --quiet playwright
+          python -m playwright install --with-deps chromium > /dev/null
+          nohup bash scripts/run_app.sh > streamlit.log 2>&1 &
+          if ! python .github/scripts/screenshot.py > smoke.log 2>&1; then
+            cat smoke.log streamlit.log
+            exit 1
+          fi
+          cat smoke.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-screenshots
+          path: |
+            demo.png
+            demo-dark.png

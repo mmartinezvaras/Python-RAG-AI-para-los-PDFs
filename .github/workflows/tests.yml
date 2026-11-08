@@ -136,7 +136,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: demo-screenshot
-          path: demo.png
+          path: |
+            demo.png
+            demo-dark.png
 
       # The first time they are missing, save the demo screenshot and the evaluation
       # results into the repository so the README can show them. Delete them to refresh.
@@ -145,6 +147,7 @@ jobs:
         run: |
           changed=0
           if [ ! -f docs/demo.png ]; then mkdir -p docs && cp demo.png docs/demo.png && git add docs/demo.png && changed=1; fi
+          if [ ! -f docs/demo-dark.png ]; then mkdir -p docs && cp demo-dark.png docs/demo-dark.png && git add docs/demo-dark.png && changed=1; fi
           if [ ! -f eval/results.md ]; then cp eval-results.md eval/results.md && git add eval/results.md && changed=1; fi
           if [ "$changed" = 0 ]; then exit 0; fi
           git config user.name "github-actions[bot]"
