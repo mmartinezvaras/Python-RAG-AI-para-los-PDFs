@@ -99,6 +99,10 @@ jobs:
       - name: Setup (deps, Ollama, models, index)
         run: bash scripts/setup.sh
 
+      # setup.sh stops the Ollama server it started (Codespaces starts it again later), so start it here.
+      - name: Start Ollama
+        run: bash scripts/start_ollama.sh
+
       - name: Ask a question from the command line
         run: |
           out=$(python query_data.py "¿Cuántos días de vacaciones al año me corresponden?")
