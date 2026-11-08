@@ -37,7 +37,7 @@ with sync_playwright() as p:
     # Night theme: the stored answer is shown again without asking the model.
     page.get_by_text("Noche", exact=True).click()
     page.wait_for_function(
-        "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#0F0406'",
+        "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#000000'",
         timeout=30_000,
     )
     page.get_by_role("heading", name="Fuentes").wait_for(timeout=60_000)

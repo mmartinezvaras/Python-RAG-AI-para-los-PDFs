@@ -1,59 +1,56 @@
-"""Theme for the demo, built on the "Night Bordeaux" palette (design: Sofya Walsh):
+"""Theme for the demo, built on Marcos's "Apple Style" palette (skill: paleta-colores-marcos):
 
-    Night Bordeaux #651926 · Coffee Bean #0F0406 · Rosy Granite #95929C
-    Alabaster Grey #E2DDE3 · Mauve Shadow #462831
+    Negro Elegancia #000000 · Apagado Grafito #555555 · Apagado Plata #86868B
+    Suave Índigo #F5F5F7 · Blanco Pureza #FFFFFF
 
-Wine and ink: Bordeaux is the accent in light mode (citations, the stamp, which reads like a wax
-seal, focus). On the near-black night background Bordeaux is unreadable (1.6:1), so night mode
-uses Bordeaux lightened with Alabaster. Serif for the text of the law. Applied over Streamlit's
-own widgets with CSS custom properties.
+Monochrome on purpose: in light mode black ink is the accent (citations, stamp, focus), in night
+mode white is. Serif for the text of the law. Applied over Streamlit's own widgets with CSS
+custom properties.
 
 ``page_css(mode)`` with mode "light", "dark" or "auto" (follows the operating system).
 """
 
 # The five palette colours.
-BORDEAUX, COFFEE, GRANITE, ALABASTER, MAUVE = "#651926", "#0F0406", "#95929C", "#E2DDE3", "#462831"
-PALETTE = {BORDEAUX, COFFEE, GRANITE, ALABASTER, MAUVE}
-# Tones derived from the palette by mixing two of its colours (or Alabaster with white).
+NEGRO, GRAFITO, PLATA, INDIGO, BLANCO = "#000000", "#555555", "#86868B", "#F5F5F7", "#FFFFFF"
+PALETTE = {NEGRO, GRAFITO, PLATA, INDIGO, BLANCO}
+# The only tones not in the palette: Negro mixed with Grafito, so night-mode cards stand out.
 DERIVED = {
-    "#F3F1F4": "Alabaster + 60% white: cards in light mode",
-    "#221115": "Coffee + 35% Mauve: cards in night mode",
-    "#2A161C": "Coffee + 50% Mauve: fields in night mode",
-    "#B08F97": "Bordeaux + 60% Alabaster: accent in night mode (6.2:1)",
+    "#141414": "Negro + 24% Grafito: cards in night mode",
+    "#1C1C1C": "Negro + 33% Grafito: fields in night mode",
 }
 
 LIGHT = {
-    "paper": ALABASTER,  # page
-    "sheet": "#F3F1F4",  # cards, sidebar
-    "field": "#F3F1F4",
-    "ink": COFFEE,  # main text (18:1 on cards)
-    "ink-2": MAUVE,  # secondary text (11.6:1). Granite is only 2.3–2.7:1: lines and icons only
-    "rule": "rgba(149, 146, 156, 0.45)",  # Granite, translucent
-    "seal": BORDEAUX,  # accent: citations, stamp, focus (10.9:1)
-    "seal-soft": "rgba(101, 25, 38, 0.08)",
-    "mark": "rgba(101, 25, 38, 0.16)",  # Bordeaux highlighter on the cited source
-    "shadow": "rgba(15, 4, 6, 0.08)",
-    "ring": "rgba(70, 40, 49, 0.14)",  # hairline around cards (semi-transparent, not a solid border)
-    "lift": "0 1px 2px rgba(15, 4, 6, 0.05), 0 4px 16px -6px rgba(70, 40, 49, 0.18)",
-    "skel": "rgba(149, 146, 156, 0.22)",
-    "halo": "rgba(101, 25, 38, 0.18)",  # focus ring and "jump to source" flash
+    "paper": INDIGO,  # page
+    "sheet": BLANCO,  # cards, sidebar
+    "field": BLANCO,
+    "ink": NEGRO,  # main text (21:1)
+    "ink-2": GRAFITO,  # secondary text (7.5:1 on white). Plata is only 3.6:1: never small text here
+    "rule": "rgba(134, 134, 139, 0.35)",  # Plata, translucent
+    "seal": NEGRO,  # accent: citations, stamp, focus
+    "seal-soft": INDIGO,
+    "mark": "rgba(134, 134, 139, 0.28)",  # Plata highlighter on the cited source
+    "shadow": "rgba(0, 0, 0, 0.06)",
+    "ring": "rgba(0, 0, 0, 0.08)",  # hairline around cards (semi-transparent, not a solid border)
+    "lift": "0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px -6px rgba(0, 0, 0, 0.10)",
+    "skel": INDIGO,
+    "halo": "rgba(0, 0, 0, 0.12)",  # focus ring and "jump to source" flash
 }
 
 DARK = {
-    "paper": COFFEE,
-    "sheet": "#221115",
-    "field": "#2A161C",
-    "ink": ALABASTER,  # 13.5:1 on cards
-    "ink-2": GRANITE,  # 5.9:1 on cards
-    "rule": "rgba(149, 146, 156, 0.28)",
-    "seal": "#B08F97",
-    "seal-soft": "rgba(176, 143, 151, 0.14)",
-    "mark": "rgba(101, 25, 38, 0.55)",  # Bordeaux glow behind light text
+    "paper": NEGRO,
+    "sheet": "#141414",
+    "field": "#1C1C1C",
+    "ink": INDIGO,  # 16.9:1 on cards
+    "ink-2": PLATA,  # 5.1:1 on cards
+    "rule": "rgba(134, 134, 139, 0.30)",
+    "seal": BLANCO,
+    "seal-soft": "rgba(255, 255, 255, 0.10)",
+    "mark": "rgba(134, 134, 139, 0.35)",
     "shadow": "rgba(0, 0, 0, 0.5)",
-    "ring": "rgba(226, 221, 227, 0.10)",
+    "ring": "rgba(255, 255, 255, 0.10)",
     "lift": "0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 20px -8px rgba(0, 0, 0, 0.8)",
-    "skel": "#2A161C",
-    "halo": "rgba(176, 143, 151, 0.28)",
+    "skel": "#1C1C1C",
+    "halo": "rgba(255, 255, 255, 0.20)",
 }
 
 FONTS = (
