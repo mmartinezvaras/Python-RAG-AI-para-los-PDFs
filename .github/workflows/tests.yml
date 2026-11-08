@@ -16,7 +16,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt ruff
+      - name: Lint
+        run: ruff check .
       - run: pytest -m "not llm" -v
       - name: Report installed versions
         run: echo "::notice title=versions::$(pip freeze | grep -iE '^(langchain|chromadb|pypdf|streamlit|pytest)' | paste -sd ' ')"
@@ -73,15 +75,15 @@ jobs:
             echo "::error title=online demo did not start::$(docker logs demo 2>&1 | tail -c 1500 | sed ':a;N;$!ba;s/\n/%0A/g')"
             exit 1
           fi
-          answer=$(docker exec demo python query_data.py "How many points does the winner of a Formula One race get?")
+          answer=$(docker exec demo python query_data.py "¿Cuántos días de vacaciones al año me corresponden?")
           echo "$answer"
-          echo "$answer" | grep -qiE "\b25\b|twenty-five"
+          echo "$answer" | grep -qiE "\b30\b|treinta"
           echo "::notice title=online demo OK::$(echo "$answer" | tr '\n' ' ') | image $(docker image inspect rag-demo --format '{{.Size}}' | numfmt --to=iec)"
 
   end-to-end:
     name: End-to-end RAG evaluation (Ollama + LLM-as-judge)
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     permissions:
       contents: write
     steps:
@@ -99,12 +101,22 @@ jobs:
 
       - name: Ask a question from the command line
         run: |
-          out=$(python query_data.py "When was the first Formula One season?")
+          out=$(python query_data.py "¿Cuántos días de vacaciones al año me corresponden?")
           echo "$out"
           echo "::notice title=CLI answer::$(echo "$out" | tr '\n' ' ')"
 
-      - name: LLM-as-a-judge evaluation
+      - name: End-to-end tests (LLM-as-a-judge)
         run: pytest -m llm -v -s
+
+      - name: Evaluation (35 questions, hybrid vs vector retrieval)
+        run: |
+          python -m eval.run_eval --out eval-results.md
+          cat eval-results.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evaluation
+          path: eval-results.md
 
       - name: Web demo smoke test + screenshot
         run: |
@@ -120,14 +132,21 @@ jobs:
           cat smoke.log
           echo "::notice title=web demo::$(tail -c 800 smoke.log | tr '\n' ' ')"
 
-      # Saves a screenshot of the demo for the README the first time it is missing.
-      - name: Commit README screenshot
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-screenshot
+          path: demo.png
+
+      # The first time they are missing, save the demo screenshot and the evaluation
+      # results into the repository so the README can show them. Delete them to refresh.
+      - name: Commit README screenshot and evaluation results
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         run: |
-          if [ -f docs/demo.png ]; then exit 0; fi
-          mkdir -p docs && mv demo.png docs/demo.png
+          changed=0
+          if [ ! -f docs/demo.png ]; then mkdir -p docs && cp demo.png docs/demo.png && git add docs/demo.png && changed=1; fi
+          if [ ! -f eval/results.md ]; then cp eval-results.md eval/results.md && git add eval/results.md && changed=1; fi
+          if [ "$changed" = 0 ]; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/demo.png
-          git commit -m "Add demo screenshot"
-          git push
+          git commit -m "Add demo screenshot and evaluation results"
+          git push origin "HEAD:${{ github.head_ref || github.ref_name }}"

@@ -27,9 +27,9 @@ if [ "$ok" != 1 ]; then
 fi
 note notice "demo started" "$(logs)"
 
-answer=$(timeout 300 python query_data.py "How many points does the winner of a Formula One race get?" 2>&1)
+answer=$(timeout 300 python query_data.py "¿Cuántos días de vacaciones al año me corresponden?" 2>&1)
 echo "$answer"
-if ! echo "$answer" | grep -qiE "\b25\b|twenty-five"; then
+if ! echo "$answer" | grep -qiE "\b30\b|treinta"; then
   note error "wrong or no answer" "$answer"
   exit 1
 fi

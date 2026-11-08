@@ -1,0 +1,35 @@
+{"question": "¿Cuántos días de vacaciones anuales retribuidas corresponden como mínimo?", "keywords": [["30", "treinta"], ["natural"]], "expected": "30 días naturales", "article": "38"}
+{"question": "¿Cuál es la duración máxima de la jornada ordinaria de trabajo a la semana?", "keywords": [["40", "cuarenta"]], "expected": "40 horas semanales de promedio en cómputo anual", "article": "34"}
+{"question": "¿Cuántas horas tienen que pasar como mínimo entre el final de una jornada y el comienzo de la siguiente?", "keywords": [["12", "doce"]], "expected": "12 horas", "article": "34"}
+{"question": "¿Cuántas horas ordinarias de trabajo efectivo se pueden hacer como máximo al día?", "keywords": [["9", "nueve"]], "expected": "9 horas diarias", "article": "34"}
+{"question": "Si la jornada diaria continuada dura más de seis horas, ¿cuánto descanso corresponde?", "keywords": [["15", "quince"], ["minuto"]], "expected": "15 minutos", "article": "34"}
+{"question": "¿Qué porcentaje de la jornada anual puede distribuir la empresa de forma irregular?", "keywords": [["10", "diez"]], "expected": "10 % de la jornada", "article": "34"}
+{"question": "¿Cuál es el número máximo de horas extraordinarias al año?", "keywords": [["80", "ochenta"]], "expected": "80 horas al año", "article": "35"}
+{"question": "¿Qué horario se considera trabajo nocturno?", "keywords": [["10", "diez", "22"], ["6", "seis"]], "expected": "entre las diez de la noche y las seis de la mañana", "article": "36"}
+{"question": "¿Cuántas horas puede durar de promedio la jornada de un trabajador nocturno?", "keywords": [["8", "ocho"]], "expected": "8 horas diarias de promedio", "article": "36"}
+{"question": "¿Cuántas pagas extraordinarias al año tiene derecho a recibir el trabajador?", "keywords": [["2", "dos"]], "expected": "dos gratificaciones extraordinarias al año", "article": "31"}
+{"question": "¿Cuánto dura como mínimo el descanso semanal?", "keywords": [["dia y medio", "1,5", "36 horas"]], "expected": "día y medio ininterrumpido", "article": "37"}
+{"question": "¿Cuántos días de permiso retribuido corresponden por matrimonio?", "keywords": [["15", "quince"]], "expected": "15 días naturales", "article": "37"}
+{"question": "¿Cuántos días de permiso se tienen por traslado del domicilio habitual?", "keywords": [["1", "un dia", "uno"]], "expected": "un día", "article": "37"}
+{"question": "¿Hasta qué edad del hijo se puede pedir una reducción de jornada por guarda legal?", "keywords": [["12", "doce"]], "expected": "12 años", "article": "37"}
+{"question": "¿Cuánto puede durar como máximo el periodo de prueba de un técnico titulado?", "keywords": [["6", "seis"], ["mes"]], "expected": "6 meses", "article": "14"}
+{"question": "¿Cuánto puede durar el periodo de prueba para los trabajadores que no son técnicos titulados?", "keywords": [["2", "dos", "3", "tres"], ["mes"]], "expected": "2 meses (3 en empresas de menos de 25 trabajadores)", "article": "14"}
+{"question": "¿A partir de qué edad se puede trabajar?", "keywords": [["16", "dieciseis"]], "expected": "16 años", "article": "6"}
+{"question": "¿Pueden los menores de 18 años hacer horas extraordinarias?", "keywords": [["no pueden", "no podran", "no puede", "prohib", "no esta permitido", "no se permite", "no,"]], "expected": "No, está prohibido", "article": "6"}
+{"question": "¿Cada cuánto tiempo como máximo se debe liquidar y pagar el salario?", "keywords": [["mes", "mensual"]], "expected": "el periodo no puede exceder de un mes", "article": "29"}
+{"question": "¿Qué interés se paga si la empresa se retrasa en el pago del salario?", "keywords": [["10", "diez"]], "expected": "10 % de lo adeudado", "article": "29"}
+{"question": "¿Qué indemnización corresponde por un despido improcedente?", "keywords": [["33", "treinta y tres"], ["24", "veinticuatro"]], "expected": "33 días de salario por año de servicio, máximo 24 mensualidades", "article": "56"}
+{"question": "¿Qué indemnización corresponde por un despido por causas objetivas?", "keywords": [["20", "veinte"], ["12", "doce"]], "expected": "20 días por año de servicio, máximo 12 mensualidades", "article": "53"}
+{"question": "¿Qué plazo hay para reclamar contra un despido?", "keywords": [["20", "veinte"], ["habil"]], "expected": "20 días hábiles", "article": "59"}
+{"question": "¿Con cuánta antelación debe avisar el empresario de la finalización de un contrato temporal de más de un año?", "keywords": [["15", "quince"]], "expected": "15 días", "article": "49"}
+{"question": "¿Cuánto puede durar como máximo la excedencia para cuidar a un hijo?", "keywords": [["3", "tres"], ["año"]], "expected": "no más de 3 años", "article": "46"}
+{"question": "¿Qué antigüedad se necesita para pedir una excedencia voluntaria y cuánto puede durar?", "keywords": [["1", "un año", "uno"], ["4", "cuatro"], ["5", "cinco"]], "expected": "al menos 1 año de antigüedad; entre 4 meses y 5 años", "article": "46"}
+{"question": "How many days of paid annual leave does a worker get?", "keywords": [["30", "thirty"]], "expected": "30 calendar days", "article": "38"}
+{"question": "What is the maximum length of the ordinary working week?", "keywords": [["40", "forty"]], "expected": "40 hours a week on an annual average", "article": "34"}
+{"question": "How long can the probation period be for qualified technicians?", "keywords": [["6", "six"]], "expected": "6 months", "article": "14"}
+{"question": "What severance pay applies to an unfair dismissal?", "keywords": [["33", "thirty-three", "thirty three"]], "expected": "33 days of salary per year worked, up to 24 months", "article": "56"}
+{"question": "¿Quién ganó el Tour de Francia en 2018?", "keywords": null, "expected": null, "article": null}
+{"question": "¿Cuál es la capital de Australia?", "keywords": null, "expected": null, "article": null}
+{"question": "¿Cuál es el salario medio de un programador en Madrid?", "keywords": null, "expected": null, "article": null}
+{"question": "What is the recipe for a traditional paella?", "keywords": null, "expected": null, "article": null}
+{"question": "¿Cuántos jugadores tiene un equipo de baloncesto en la pista?", "keywords": null, "expected": null, "article": null}
