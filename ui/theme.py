@@ -1,40 +1,50 @@
-"""Theme for the demo: an official-gazette look (navy ink on cool paper, serif for the text of
-the law, violet stamp ink for citations) with a night version, applied over Streamlit's own
-widgets with CSS custom properties.
+"""Theme for the demo, built on Marcos's "Apple Style" palette (skill: paleta-colores-marcos):
+
+    Negro Elegancia #000000 · Apagado Grafito #555555 · Apagado Plata #86868B
+    Suave Índigo #F5F5F7 · Blanco Pureza #FFFFFF
+
+Monochrome on purpose: in light mode black ink is the accent (citations, stamp, focus), in night
+mode white is. Serif for the text of the law. Applied over Streamlit's own widgets with CSS
+custom properties.
 
 ``page_css(mode)`` with mode "light", "dark" or "auto" (follows the operating system).
 """
 
+# The five palette colours. Anything else below is derived from them (alpha or a mix).
+NEGRO, GRAFITO, PLATA, INDIGO, BLANCO = "#000000", "#555555", "#86868B", "#F5F5F7", "#FFFFFF"
+
 LIGHT = {
-    "paper": "#F5F6F8",  # page
-    "sheet": "#FFFFFF",  # cards, sidebar
-    "field": "#FFFFFF",
-    "ink": "#17213A",  # main text: navy ink
-    "ink-2": "#515B73",  # secondary text
-    "rule": "#DDE2EB",
-    "seal": "#5A3CC2",  # violet stamp ink: citations, focus, accents
-    "seal-soft": "#EFEAFE",
-    "mark": "#FFE58C",  # highlighter on the cited source
-    "shadow": "rgba(23, 33, 58, 0.07)",
-    "ring": "rgba(23, 33, 58, 0.09)",  # hairline around cards (semi-transparent, not a solid border)
-    "lift": "0 1px 2px rgba(23, 33, 58, 0.05), 0 4px 16px -6px rgba(23, 33, 58, 0.10)",
-    "skel": "#E7EAF0",
+    "paper": INDIGO,  # page
+    "sheet": BLANCO,  # cards, sidebar
+    "field": BLANCO,
+    "ink": NEGRO,  # main text (21:1)
+    "ink-2": GRAFITO,  # secondary text (7.5:1 on white). Plata is only 3.6:1: never small text here
+    "rule": "rgba(134, 134, 139, 0.35)",  # Plata, translucent
+    "seal": NEGRO,  # accent: citations, stamp, focus
+    "seal-soft": INDIGO,
+    "mark": "rgba(134, 134, 139, 0.28)",  # Plata highlighter on the cited source
+    "shadow": "rgba(0, 0, 0, 0.06)",
+    "ring": "rgba(0, 0, 0, 0.08)",  # hairline around cards (semi-transparent, not a solid border)
+    "lift": "0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px -6px rgba(0, 0, 0, 0.10)",
+    "skel": INDIGO,
+    "halo": "rgba(0, 0, 0, 0.12)",  # focus ring and "jump to source" flash
 }
 
 DARK = {
-    "paper": "#0E1524",
-    "sheet": "#161F33",
-    "field": "#1B2540",
-    "ink": "#E6E9F2",
-    "ink-2": "#A2ABC0",
-    "rule": "#28324B",
-    "seal": "#AE9BFF",
-    "seal-soft": "#2B2652",
-    "mark": "rgba(250, 200, 70, 0.20)",
-    "shadow": "rgba(0, 0, 0, 0.35)",
-    "ring": "rgba(255, 255, 255, 0.08)",
-    "lift": "0 1px 2px rgba(0, 0, 0, 0.30), 0 6px 20px -8px rgba(0, 0, 0, 0.55)",
-    "skel": "#222C45",
+    "paper": NEGRO,
+    "sheet": "#141414",  # Negro + 24% Grafito
+    "field": "#1C1C1C",  # Negro + 33% Grafito
+    "ink": INDIGO,  # 16.9:1 on cards
+    "ink-2": PLATA,  # 5.1:1 on cards
+    "rule": "rgba(134, 134, 139, 0.30)",
+    "seal": BLANCO,
+    "seal-soft": "rgba(255, 255, 255, 0.10)",
+    "mark": "rgba(134, 134, 139, 0.35)",
+    "shadow": "rgba(0, 0, 0, 0.5)",
+    "ring": "rgba(255, 255, 255, 0.10)",
+    "lift": "0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 20px -8px rgba(0, 0, 0, 0.8)",
+    "skel": "#1C1C1C",
+    "halo": "rgba(255, 255, 255, 0.20)",
 }
 
 FONTS = (
@@ -101,7 +111,7 @@ html { -webkit-tap-highlight-color: transparent; }
 [data-testid="stTextInputRootElement"] * { background-color: transparent !important; border-color: transparent !important; }
 [data-testid="stTextInputRootElement"]:focus-within {
   border-color: var(--lx-seal) !important;
-  box-shadow: 0 0 0 4px var(--lx-seal-soft);
+  box-shadow: 0 0 0 4px var(--lx-halo);
 }
 [data-testid="stTextInput"] [data-baseweb="base-input"], [data-testid="stTextInput"] input {
   background: transparent; color: var(--lx-ink); font-size: 1.05rem;
@@ -206,7 +216,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .lx-skel-wrap { display: grid; gap: .55rem; }
 .lx-skel {
   display: block; height: .8rem; border-radius: 6px;
-  background: linear-gradient(90deg, var(--lx-skel) 0%, var(--lx-seal-soft) 45%, var(--lx-skel) 90%);
+  background: linear-gradient(90deg, var(--lx-skel) 0%, var(--lx-mark) 45%, var(--lx-skel) 90%);
   background-size: 220% 100%; animation: lx-shimmer 1.3s linear infinite;
 }
 .lx-skel:nth-child(2) { width: 92%; } .lx-skel:nth-child(3) { width: 64%; }
@@ -293,7 +303,7 @@ html { -webkit-tap-highlight-color: transparent; }
   70% { opacity: .95; transform: scale(.97) rotate(-7.5deg); }
   100% { opacity: .88; transform: scale(1) rotate(-8deg); }
 }
-@keyframes lx-flash { 0%, 35% { box-shadow: 0 0 0 4px var(--lx-seal-soft), 0 0 0 1px var(--lx-seal); } }
+@keyframes lx-flash { 0%, 35% { box-shadow: 0 0 0 4px var(--lx-halo), 0 0 0 1px var(--lx-seal); } }
 @keyframes lx-fade { from { opacity: 0; } }
 
 /* Reduced motion: fewer and gentler, not zero. Keep fades, drop movement. */

@@ -67,8 +67,22 @@ def test_not_found_explains_why_the_model_was_not_called():
 
 def test_theme_modes():
     assert LIGHT.keys() == DARK.keys()
-    assert DARK["paper"] in page_css("dark") and LIGHT["paper"] not in page_css("dark")
-    assert LIGHT["paper"] in page_css("light") and DARK["paper"] not in page_css("light")
+    paper = lambda tokens: f"--lx-paper:{tokens['paper']};"  # noqa: E731
+    assert paper(DARK) in page_css("dark") and paper(LIGHT) not in page_css("dark")
+    assert paper(LIGHT) in page_css("light") and paper(DARK) not in page_css("light")
     auto = page_css("auto")
-    assert LIGHT["paper"] in auto and "prefers-color-scheme: dark" in auto and DARK["paper"] in auto
+    assert paper(LIGHT) in auto and "prefers-color-scheme: dark" in auto and paper(DARK) in auto
     assert "prefers-reduced-motion" in auto
+
+
+def test_theme_uses_only_marcos_palette():
+    import re
+
+    from ui import theme
+
+    palette = {theme.NEGRO, theme.GRAFITO, theme.PLATA, theme.INDIGO, theme.BLANCO}
+    derived = {"#141414", "#1C1C1C"}  # Negro mixed with Grafito
+    for tokens in (LIGHT, DARK):
+        for value in tokens.values():
+            for hex_colour in re.findall(r"#[0-9A-Fa-f]{6}", value):
+                assert hex_colour.upper() in palette | derived, hex_colour
