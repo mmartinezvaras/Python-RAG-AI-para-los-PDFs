@@ -27,8 +27,8 @@ Rules:
 Passages:
 {context}
 
-Question: {question}{translation}
-Answer:"""
+{translation}Question: {question}
+Answer in {language}:"""
 
 NOT_FOUND = {
     "es": "No he encontrado información sobre esto en los documentos.",
@@ -61,7 +61,7 @@ def build_prompt(question: str, passages: list[Passage], translated: str | None 
     language = "Spanish" if detect_language(question) == "es" else "English"
     extra = ""
     if translated and translated != question:
-        extra = f"\n(Same question in the language of the passages: {translated})"
+        extra = f"(For matching the passages, the question in their language is: {translated})\n"
     return PROMPT_TEMPLATE.format(context=context, question=question, translation=extra, language=language)
 
 
