@@ -140,8 +140,14 @@ html { -webkit-tap-highlight-color: transparent; }
 .stButton button [data-testid="stIconMaterial"], [data-testid="stButtonGroup"] [data-testid="stIconMaterial"] {
   color: var(--lx-seal);
 }
-[data-testid="stButtonGroup"] button[kind*="Active"], [data-testid="stButtonGroup"] button[aria-checked="true"] {
-  background: var(--lx-seal-soft); border-color: var(--lx-seal);
+/* Selected theme. Streamlit paints it with primaryColor (black), invisible on the night background. */
+[data-testid="stButtonGroup"] button[kind*="Active"], [data-testid="stButtonGroup"] button[aria-checked="true"],
+[data-testid="stBaseButton-segmented_controlActive"] {
+  background: var(--lx-seal) !important; border-color: var(--lx-seal) !important;
+}
+[data-testid="stButtonGroup"] button[kind*="Active"] *, [data-testid="stBaseButton-segmented_controlActive"] *,
+[data-testid="stButtonGroup"] button[kind*="Active"], [data-testid="stBaseButton-segmented_controlActive"] {
+  color: var(--lx-sheet) !important;
 }
 
 /* Sidebar widgets */
