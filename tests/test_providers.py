@@ -26,6 +26,7 @@ def test_parse_sse_deltas():
 class FakeOpenAI(BaseHTTPRequestHandler):
     calls: list = []
     fail_first = 0
+    with_index = True  # False behaves like Gemini's OpenAI-compatible API
 
     def log_message(self, *args):
         pass
@@ -40,8 +41,12 @@ class FakeOpenAI(BaseHTTPRequestHandler):
             self.end_headers()
             return
         if self.path.endswith("/embeddings"):
-            data = [{"index": i, "embedding": [float(len(t)), 1.0]} for i, t in enumerate(body["input"])]
-            payload = json.dumps({"data": list(reversed(data))}).encode()  # out of order on purpose
+            if FakeOpenAI.with_index:
+                data = [{"index": i, "embedding": [float(len(t)), 1.0]} for i, t in enumerate(body["input"])]
+                data = list(reversed(data))  # out of order on purpose
+            else:
+                data = [{"embedding": [float(len(t)), 1.0]} for t in body["input"]]
+            payload = json.dumps({"data": data}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -64,7 +69,7 @@ class FakeOpenAI(BaseHTTPRequestHandler):
 @pytest.fixture
 def server(monkeypatch):
     monkeypatch.setattr(providers.time, "sleep", lambda s: None)
-    FakeOpenAI.calls, FakeOpenAI.fail_first = [], 0
+    FakeOpenAI.calls, FakeOpenAI.fail_first, FakeOpenAI.with_index = [], 0, True
     httpd = HTTPServer(("127.0.0.1", 0), FakeOpenAI)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -87,6 +92,12 @@ def test_embeddings_are_batched_and_ordered(server):
     assert vectors == [[1.0, 1.0], [2.0, 1.0], [3.0, 1.0]]
     assert len(FakeOpenAI.calls) == 2  # 2 + 1 texts
     assert emb.embed_query("dddd") == [4.0, 1.0]
+
+
+def test_embeddings_without_index_field_like_gemini(server):
+    FakeOpenAI.with_index = False
+    emb = OpenAICompatibleEmbeddings("gemini-embedding-001", server, "secret", batch_size=2)
+    assert emb.embed_documents(["a", "bb", "ccc"]) == [[1.0, 1.0], [2.0, 1.0], [3.0, 1.0]]
 
 
 def test_retries_on_rate_limit(server):

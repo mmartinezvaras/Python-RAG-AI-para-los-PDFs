@@ -4,7 +4,7 @@
 
 **A Retrieval-Augmented Generation system that answers questions about a 100+ page legal PDF, citing the exact article and page for every fact, and saying "it's not in the documents" instead of making things up.**
 
-**[▶ Open the live demo](https://YOUR-APP.streamlit.app)** · [Run it in Codespaces](https://codespaces.new/mmartinezvaras/Python-RAG-AI-para-los-PDFs?quickstart=1) · [Evaluation results](eval/results.md)
+**[▶ Open the live demo](https://estatuto-rag.streamlit.app)** · [Run it in Codespaces](https://codespaces.new/mmartinezvaras/Python-RAG-AI-para-los-PDFs?quickstart=1) · [Evaluation results](eval/results.md)
 
 [![tests](https://github.com/mmartinezvaras/Python-RAG-AI-para-los-PDFs/actions/workflows/tests.yml/badge.svg)](https://github.com/mmartinezvaras/Python-RAG-AI-para-los-PDFs/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
@@ -18,7 +18,7 @@
 
 ---
 
-> 🇪🇸 **¿Vienes desde mi CV?** Abre la **[demo online](https://YOUR-APP.streamlit.app)**: no hace falta instalar nada ni crear ninguna cuenta. Pregúntale lo que quieras sobre el Estatuto de los Trabajadores (vacaciones, despidos, jornada, permisos…) y verás la respuesta con el artículo y la página exacta del BOE de donde sale.
+> 🇪🇸 **¿Vienes desde mi CV?** Abre la **[demo online](https://estatuto-rag.streamlit.app)**: no hace falta instalar nada ni crear ninguna cuenta. Pregúntale lo que quieras sobre el Estatuto de los Trabajadores (vacaciones, despidos, jornada, permisos…) y verás la respuesta con el artículo y la página exacta del BOE de donde sale.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/demo-dark.png">
@@ -73,7 +73,7 @@ flowchart LR
 - **Cross-lingual questions.** The statute is in Spanish; a question in English is translated into Spanish *for the search only* (small embedding models and BM25 match far better within one language), and the answer is still written in English. Found by the end-to-end tests: English questions retrieved the wrong articles before this.
 - **Streaming UX.** The answer appears word by word; sources are known before the first token.
 - **Interface designed, not defaulted.** A monochrome "Apple Style" palette (black, graphite, silver, off-white, white; black ink is the accent in light mode, white in night mode), serif for the text of the law, and light, night and automatic themes, with every text colour checked for contrast. Motion follows [Emil Kowalski's design-engineering rules](https://github.com/emilkowalski/skills): one orchestrated moment (sources enter 50 ms apart, then the cited one gets a "Citado" stamp), strong ease-out curves under 400 ms, press feedback on buttons, nothing re-animates when you only switch the theme, and reduced-motion users get fades instead of movement. All PDF and model text is escaped before it reaches the page (tested).
-- **Tested and reproducible.** 42 fast unit tests (no models needed; the OpenAI-compatible client is tested against a local fake server), end-to-end tests with the real model, linting, and CI that boots the real Codespaces container and the Docker image and asks them a question.
+- **Tested and reproducible.** 43 fast unit tests (no models needed; the OpenAI-compatible client is tested against a local fake server), end-to-end tests with the real model, linting, and CI that boots the real Codespaces container and the Docker image and asks them a question.
 
 ## Results
 
@@ -103,7 +103,7 @@ What the evaluation caught along the way: English questions retrieved the wrong 
 
 ## Run it
 
-**Online:** [live demo](https://YOUR-APP.streamlit.app), nothing to install.
+**Online:** [live demo](https://estatuto-rag.streamlit.app), nothing to install.
 
 **GitHub Codespaces (one click):** [open a codespace](https://codespaces.new/mmartinezvaras/Python-RAG-AI-para-los-PDFs?quickstart=1), wait ~5 minutes the first time (it installs Ollama, downloads the models and the PDF, and builds the index), and the demo opens by itself. If it doesn't, open the **Ports** tab and click 🌐 next to port 8501.
 
@@ -154,7 +154,7 @@ On first start the app downloads the PDF and builds the index through the API (a
 ## Evaluation and tests
 
 ```bash
-pytest -m "not llm"                         # 42 fast tests, no models needed
+pytest -m "not llm"                         # 43 fast tests, no models needed
 pytest -m llm -v                            # end-to-end with the real model
 python -m eval.run_eval                     # full evaluation → eval/results.md
 python -m eval.run_eval --retrieval-only    # retrieval metrics in seconds, to tune chunking or the threshold

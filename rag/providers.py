@@ -106,7 +106,13 @@ class OpenAICompatibleEmbeddings:
             batch = texts[i : i + self.batch_size]
             with _post(self.base_url, "embeddings", self.api_key, {"model": self.model, "input": batch}) as resp:
                 data = json.load(resp)["data"]
-            vectors.extend(item["embedding"] for item in sorted(data, key=lambda d: d["index"]))
+            # OpenAI numbers each item with "index"; Gemini's compatible API omits it and
+            # returns them in input order.
+            if all("index" in item for item in data):
+                data = sorted(data, key=lambda d: d["index"])
+            if len(data) != len(batch):
+                raise ApiError(f"Asked for {len(batch)} embeddings, got {len(data)}")
+            vectors.extend(item["embedding"] for item in data)
         return vectors
 
     def embed_query(self, text: str) -> list[float]:
