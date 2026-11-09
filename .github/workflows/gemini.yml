@@ -1,0 +1,127 @@
+name: gemini
+
+# The online setup (the configuration used by the live demo on Streamlit Cloud):
+# Gemini for embeddings and answers. Calibrates the relevance gate for Gemini's embeddings,
+# runs the 35-question evaluation, records the demo GIF for the README and publishes both.
+# Needs the GEMINI_API_KEY repository secret (Settings → Secrets and variables → Actions).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "rag/**"
+      - "eval/**"
+      - ".github/workflows/gemini.yml"
+      - ".github/scripts/record_gif.py"
+
+concurrency:
+  group: gemini
+  cancel-in-progress: true
+
+jobs:
+  online:
+    name: Gemini setup (evaluation + demo GIF)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      RAG_LLM_PROVIDER: openai
+      RAG_EMBEDDINGS: openai
+      OPENAI_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
+      OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      RAG_LLM_MODEL: ${{ vars.RAG_LLM_MODEL || 'gemini-3.8-flash' }}
+      RAG_EMBED_MODEL: gemini-embedding-001
+      RAG_CHROMA_PATH: chroma-gemini
+      RAG_EVAL_PAUSE: "4" # free tier: a few requests per minute
+    steps:
+      - name: Check the API key
+        id: key
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::warning::Add the GEMINI_API_KEY repository secret to run the Gemini evaluation."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.key.outputs.ok == 'true'
+      - uses: actions/setup-python@v6
+        if: steps.key.outputs.ok == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        if: steps.key.outputs.ok == 'true'
+        run: pip install --quiet -r requirements.txt
+
+      - name: Models this key can use
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          curl -sS -H "Authorization: Bearer $OPENAI_API_KEY" "${OPENAI_BASE_URL}models" \
+            | python -c "import json,sys; d=json.load(sys.stdin); print('\n'.join(sorted(m['id'] for m in d.get('data', []))) or d)"
+
+      - name: Build the index with Gemini embeddings
+        if: steps.key.outputs.ok == 'true'
+        run: python populate_database.py --no-download
+
+      - name: Calibrate the relevance gate for Gemini embeddings
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          threshold=$(RAG_EVAL_PAUSE=1 python -m eval.run_eval --suggest-threshold | tail -1)
+          echo "Calibrated RAG_MIN_RELEVANCE: $threshold" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "RAG_MIN_RELEVANCE=$threshold" >> "$GITHUB_ENV"
+
+      - name: Evaluation (35 questions, hybrid vs vector)
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          python -m eval.run_eval --out eval/results-gemini.md
+          cat eval/results-gemini.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record the demo
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          pip install --quiet playwright
+          python -m playwright install --with-deps chromium > /dev/null
+          sudo apt-get install -y -qq ffmpeg > /dev/null
+          nohup streamlit run app.py --server.headless true --server.port 8501 > streamlit.log 2>&1 &
+          if ! python .github/scripts/record_gif.py http://localhost:8501; then cat streamlit.log; exit 1; fi
+          trim=$(cat trim.txt)
+          filters="fps=12,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle"
+          ffmpeg -loglevel error -y -ss "$trim" -i demo.webm -vf "$filters" -loop 0 demo.gif
+          if [ "$(stat -c %s demo.gif)" -gt 9000000 ]; then
+            ffmpeg -loglevel error -y -ss "$trim" -i demo.webm -vf "${filters/fps=12,scale=960/fps=10,scale=800}" -loop 0 demo.gif
+          fi
+          ls -la demo.gif
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.key.outputs.ok == 'true'
+        with:
+          name: gemini
+          path: |
+            eval/results-gemini.md
+            demo.gif
+            demo.webm
+            streamlit.log
+
+      - name: Publish results (main) and GIF (demo-media branch)
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add eval/results-gemini.md
+          if ! git diff --cached --quiet; then
+            git commit -qm "Evaluation results with Gemini (online demo setup)"
+            git pull -q --rebase origin main
+            git push origin HEAD:main
+          fi
+          # The GIF lives on its own branch (force-pushed) so the history of main doesn't grow.
+          cp demo.gif /tmp/demo.gif
+          git checkout -q --orphan demo-media
+          git rm -rq --cached .
+          cp /tmp/demo.gif demo.gif
+          git add demo.gif
+          git commit -qm "Demo GIF for ${GITHUB_SHA::7}"
+          git push -f origin HEAD:demo-media

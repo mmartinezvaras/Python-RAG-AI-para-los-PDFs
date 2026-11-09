@@ -46,11 +46,13 @@ RETRIEVAL_MODE = os.getenv("RAG_RETRIEVAL", "hybrid").lower()  # hybrid | vector
 TOP_K = int(os.getenv("RAG_TOP_K", "5"))
 CANDIDATES = int(os.getenv("RAG_CANDIDATES", "20"))  # per retriever, before fusion
 # Cosine similarity of the best passage below which we answer "not in the documents"
-# without calling the LLM. Depends on the embedding model: calibrate it with eval/run_eval.py.
-# 0.64 comes from the first full evaluation with nomic-embed-text on the statute: answerable
-# questions scored 0.68–0.79, off-topic ones 0.63–0.70, so the gate only stops the clearly
-# unrelated ones and the prompt's "say you don't know" rule handles the rest.
-MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.64"))
+# without calling the LLM. Similarity scores depend on the embedding model, so each model
+# has its own value, calibrated with `python -m eval.run_eval --suggest-threshold`
+# (CI does it for Gemini: .github/workflows/gemini.yml). RAG_MIN_RELEVANCE overrides it.
+CALIBRATED_RELEVANCE = {
+    "nomic-embed-text": 0.64,  # answerable questions 0.68–0.79, off-topic 0.63–0.70
+}
+MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE") or CALIBRATED_RELEVANCE.get(EMBED_MODEL, 0.45))
 # Language of the documents ("es" or "en"). Questions in the other language are translated
 # before searching (embeddings and BM25 match much better within one language); the answer
 # is still written in the question's language. Set it to "" to disable.

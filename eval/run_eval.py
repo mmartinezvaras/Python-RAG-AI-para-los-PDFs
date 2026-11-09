@@ -12,12 +12,16 @@ Usage:
     python -m eval.run_eval                      # both modes, writes eval/results.md
     python -m eval.run_eval --modes hybrid --limit 5
     python -m eval.run_eval --retrieval-only     # no LLM calls, seconds instead of minutes
+    python -m eval.run_eval --suggest-threshold  # prints a calibrated RAG_MIN_RELEVANCE
+
+RAG_EVAL_PAUSE=4 waits that many seconds between questions (free API tiers limit requests per minute).
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import statistics
 import time
@@ -137,6 +141,24 @@ class ModeReport:
         return m
 
 
+def best_threshold(answerable: list[float], unanswerable: list[float], miss_cost: float = 2.0) -> float:
+    """Relevance gate that separates the two groups best, from the best similarity per question.
+
+    Blocking an answerable question costs ``miss_cost``; letting an unanswerable one through
+    costs 1, because the prompt still tells the model to say it doesn't know. Returns the
+    midpoint of the best gap, rounded down to two decimals."""
+    values = sorted(set(answerable + unanswerable))
+    candidates = [0.0] + [(a + b) / 2 for a, b in zip(values, values[1:])]
+    if values:
+        candidates.append(values[-1] + 0.01)
+
+    def cost(t: float) -> float:
+        return miss_cost * sum(r < t for r in answerable) + sum(r >= t for r in unanswerable)
+
+    best = min(candidates, key=lambda t: (cost(t), -t))  # on ties, the stricter gate
+    return int(best * 100) / 100
+
+
 def run(modes: list[str], limit: int | None, retrieval_only: bool) -> list[ModeReport]:
     from rag.answer import answer_question, retrieve
 
@@ -148,7 +170,10 @@ def run(modes: list[str], limit: int | None, retrieval_only: bool) -> list[ModeR
     reports = []
     for mode in modes:
         report = ModeReport(mode)
+        pause = float(os.getenv("RAG_EVAL_PAUSE", "0"))
         for item in items:
+            if pause:
+                time.sleep(pause)
             row = Row(question=item["question"], answerable=bool(item["article"]))
             result = retrieve(item["question"], mode=mode)
             row.best_relevance = result.best_relevance
@@ -197,7 +222,7 @@ def to_markdown(reports: list[ModeReport]) -> str:
             "**Relevance gate calibration** (best cosine similarity per question): "
             f"answerable min {min(rel_ans):.2f} / median {statistics.median(rel_ans):.2f}; "
             f"not answerable median {statistics.median(rel_una):.2f} / max {max(rel_una):.2f}. "
-            "A good threshold sits between the two.",
+            f"Suggested gate for this embedding model: **{best_threshold(rel_ans, rel_una):.2f}**.",
         ]
 
     failures = [(rep.mode, r) for rep in reports for r in rep.rows if r.correct is False or (r.answerable and not r.hit)]
@@ -216,7 +241,18 @@ def main():
     parser.add_argument("--limit", type=int, help="Only the first N answerable questions (quick runs).")
     parser.add_argument("--retrieval-only", action="store_true", help="Skip the LLM: retrieval metrics only.")
     parser.add_argument("--out", type=Path, default=RESULTS)
+    parser.add_argument(
+        "--suggest-threshold", action="store_true", help="Retrieval only; print a calibrated RAG_MIN_RELEVANCE."
+    )
     args = parser.parse_args()
+
+    if args.suggest_threshold:
+        rows = run(["hybrid"], args.limit, retrieval_only=True)[0].rows
+        threshold = best_threshold(
+            [r.best_relevance for r in rows if r.answerable], [r.best_relevance for r in rows if not r.answerable]
+        )
+        print(f"{threshold:.2f}")
+        return
 
     reports = run(args.modes, args.limit, args.retrieval_only)
     markdown = to_markdown(reports)
