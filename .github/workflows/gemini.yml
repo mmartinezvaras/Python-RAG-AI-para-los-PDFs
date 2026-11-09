@@ -41,9 +41,17 @@ jobs:
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "::warning::Add the GEMINI_API_KEY repository secret to run the Gemini evaluation."
             echo "ok=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          # Pasted secrets often carry quotes, spaces or a newline: clean them (never printing the key).
+          clean=$(printf '%s' "$OPENAI_API_KEY" | tr -d "\"' \r\n\t")
+          echo "::add-mask::$clean"
+          if [ "$clean" != "$OPENAI_API_KEY" ]; then
+            echo "::warning::GEMINI_API_KEY had quotes, spaces or line breaks around it; they were removed."
+          fi
+          echo "Key length: ${#clean} characters"
+          echo "OPENAI_API_KEY=$clean" >> "$GITHUB_ENV"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v5
         if: steps.key.outputs.ok == 'true'

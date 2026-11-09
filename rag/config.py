@@ -35,7 +35,8 @@ if not OLLAMA_URL.startswith("http"):
     OLLAMA_URL = f"http://{OLLAMA_URL}"
 
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+# Keys pasted into a secrets box often carry quotes, spaces or a trailing newline.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip().strip("\"'").strip()
 
 # --- Indexing -----------------------------------------------------------------------------
 CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", "1000"))
