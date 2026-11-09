@@ -95,3 +95,10 @@ def test_preparing_card_shows_the_current_step_and_progress():
     embedding = preparing_card("embed", 128, 512)
     assert embedding.count('class="is-done"') == 1 and "128 de 512 fragmentos" in embedding
     assert 'aria-valuenow="128"' in embedding and "width:25%" in embedding
+
+
+def test_problem_card_escapes_the_message():
+    from ui.components import problem_card
+
+    html = problem_card("Error <b>429</b>")
+    assert "&lt;b&gt;429" in html and 'role="alert"' in html

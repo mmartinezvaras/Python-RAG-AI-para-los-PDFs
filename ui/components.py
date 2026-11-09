@@ -117,6 +117,15 @@ def preparing_card(stage: str, done: int = 0, total: int = 0) -> str:
     )
 
 
+def problem_card(message: str) -> str:
+    return (
+        '<section class="lx-answer lx-notfound" role="alert">'
+        f'<div class="lx-h" role="heading" aria-level="2">{icon("error")}No se ha podido responder</div>'
+        f'<div class="lx-answer-body"><p>{esc(message)}</p></div>'
+        "</section>"
+    )
+
+
 def not_found_card(text: str, best_relevance: float, threshold: float) -> str:
     return (
         '<section class="lx-answer lx-notfound" aria-live="polite">'

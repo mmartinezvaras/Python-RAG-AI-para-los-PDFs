@@ -125,3 +125,36 @@ def test_index_sync_is_incremental_and_handles_changes(tmp_path, fake_embeddings
     assert result.added == 1  # only the changed chunk is embedded again
     assert result.deleted == n_football + 1  # the deleted PDF + the old version of the chunk
     assert result.total == len(remaining)
+
+
+def test_embedding_cache_avoids_calling_the_api(tmp_path, fake_embeddings):
+    from rag import embedding_cache
+
+    chunks = prepare_chunks(FIXTURES)
+    first_db, cache_file = str(tmp_path / "a"), tmp_path / "embeddings-test.npz"
+    sync_index(chunks, chroma_path=first_db, embedding_function=fake_embeddings)
+    embedding_cache.export(chroma_path=first_db, path=cache_file)
+    cache = embedding_cache.load(cache_file)
+    assert len(cache) == len(chunks)
+
+    class NoApi:
+        def embed_documents(self, texts):
+            raise AssertionError(f"API called for {len(texts)} chunks")
+
+    # Everything cached: the API is never called.
+    result = sync_index(prepare_chunks(FIXTURES), chroma_path=str(tmp_path / "b"), embedding_function=NoApi(), cache=cache)
+    assert result.added == len(chunks)
+
+    # One chunk changed: only that one goes to the API.
+    changed = prepare_chunks(FIXTURES)
+    changed[0].page_content += " (updated)"
+    changed = calculate_chunk_ids(changed)
+    sent = []
+
+    class CountingApi:
+        def embed_documents(self, texts):
+            sent.extend(texts)
+            return fake_embeddings.embed_documents(texts)
+
+    sync_index(changed, chroma_path=str(tmp_path / "c"), embedding_function=CountingApi(), cache=cache)
+    assert len(sent) == 1 and sent[0].endswith("(updated)")

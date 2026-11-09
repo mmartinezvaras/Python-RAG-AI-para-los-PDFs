@@ -75,12 +75,40 @@ def ensure_index() -> int:
     if get_collection().count() > 0:
         return get_collection().count()
     slot = st.empty()
+    from rag import embedding_cache
+
+    if config.PUBLIC_DEMO and config.EMBEDDING_PROVIDER != "ollama" and not embedding_cache.cache_path().exists():
+        # Without the precomputed embeddings, indexing would spend most of the API's free daily quota.
+        html(
+            ui.problem_card(
+                "La demo se está terminando de preparar. Vuelve a intentarlo en unos minutos "
+                "o pruébala en GitHub Codespaces desde el README."
+            ),
+            slot,
+        )
+        st.stop()
     html(ui.preparing_card("read"), slot)
-    with _build_lock():
-        if get_collection().count() == 0:
-            build_database(progress=lambda stage, done, total: html(ui.preparing_card(stage, done, total), slot))
+    try:
+        with _build_lock():
+            if get_collection().count() == 0:
+                build_database(progress=lambda stage, done, total: html(ui.preparing_card(stage, done, total), slot))
+    except Exception as exc:
+        html(ui.problem_card(friendly_error(exc)), slot)
+        st.stop()
     slot.empty()
     return get_collection().count()
+
+
+def friendly_error(exc: Exception) -> str:
+    text = str(exc)
+    if "429" in text or "quota" in text.lower():
+        return (
+            "La demo ha llegado al límite gratuito de peticiones de su modelo de IA (Gemini). "
+            "Se renueva solo: prueba de nuevo en un rato o mañana."
+        )
+    if "401" in text or "403" in text or "Invalid Auth" in text:
+        return "La clave de la API del modelo no es válida. Si eres el autor, revisa OPENAI_API_KEY en los Secrets."
+    return f"No se ha podido responder: {text[:300]}"
 
 
 def set_question(q: str):
@@ -217,8 +245,8 @@ if question:
         for piece in pieces:
             text += piece
             html(ui.answer_card(text, streaming=True), slot)
-    except Exception as exc:  # a friendly message instead of a stack trace
-        slot.error(f"No se ha podido responder: {exc}", icon=":material/error:")
+    except Exception as exc:  # a clear message instead of a stack trace
+        html(ui.problem_card(friendly_error(exc)), slot)
         st.stop()
 
     st.session_state.last = answer

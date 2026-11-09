@@ -202,7 +202,16 @@ def sync_index(
     embedding_function=None,
     batch: int = 64,
     progress: Progress | None = None,
+    cache: dict[tuple[str, str], list[float]] | None = None,
 ) -> SyncResult:
+    """``cache``: precomputed vectors by (chunk id, hash), used instead of calling the API.
+    By default the repository's cache for the current embedding model is used, unless an
+    ``embedding_function`` is passed explicitly (tests)."""
+    if cache is None and embedding_function is None:
+        from rag import embedding_cache
+
+        cache = embedding_cache.load()
+    cache = cache or {}
     collection = get_collection(chroma_path)
     stored = collection.get(include=["metadatas"])
     existing = {i: (m or {}).get("hash") for i, m in zip(stored["ids"], stored["metadatas"])}
@@ -215,10 +224,17 @@ def sync_index(
     if to_add:
         from rag.providers import get_embedding_function
 
-        embeddings = embedding_function or get_embedding_function()
+        provider: list = [embedding_function]  # created only if some chunk isn't in the cache
+
+        def get_embeddings():
+            if provider[0] is None:
+                provider[0] = get_embedding_function()
+            return provider[0]
+
         by_id = {c.metadata["id"]: c for c in chunks}
         new_chunks = [by_id[i] for i in to_add]
-        print(f"👉 Embedding {len(new_chunks)} chunks")
+        cached = sum((c.metadata["id"], c.metadata["hash"]) in cache for c in new_chunks)
+        print(f"👉 Indexing {len(new_chunks)} chunks ({cached} from the embedding cache)")
         if progress:
             progress("embed", 0, len(new_chunks))
         for start in range(0, len(new_chunks), batch):
@@ -229,7 +245,7 @@ def sync_index(
                 metadatas=[
                     {k: c.metadata[k] for k in ("source", "page", "articles", "hash") if k in c.metadata} for c in part
                 ],
-                embeddings=embeddings.embed_documents([c.page_content for c in part]),
+                embeddings=_vectors_for(part, cache, get_embeddings),
             )
             done = min(start + batch, len(new_chunks))
             print(f"   {done}/{len(new_chunks)}")
@@ -239,6 +255,17 @@ def sync_index(
     result = SyncResult(added=len(to_add), deleted=len(to_delete), total=collection.count())
     print(f"✅ Index in sync: +{result.added} added, −{result.deleted} removed, {result.total} chunks in total")
     return result
+
+
+def _vectors_for(chunks: list[Document], cache, get_embeddings) -> list[list[float]]:
+    """Vectors for ``chunks``: from the cache when possible, the rest from the embeddings API."""
+    vectors: list[list[float] | None] = [cache.get((c.metadata["id"], c.metadata["hash"])) for c in chunks]
+    missing = [i for i, v in enumerate(vectors) if v is None]
+    if missing:
+        fresh = get_embeddings().embed_documents([chunks[i].page_content for i in missing])
+        for i, v in zip(missing, fresh):
+            vectors[i] = v
+    return vectors
 
 
 def build_database(reset: bool = False, download: bool = True, progress: Progress | None = None) -> SyncResult:
