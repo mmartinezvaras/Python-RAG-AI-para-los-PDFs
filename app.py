@@ -6,6 +6,7 @@ Run with:  streamlit run app.py
 import json
 import os
 import re
+import threading
 import urllib.request
 from pathlib import Path
 
@@ -63,12 +64,23 @@ def pdf_files() -> list[Path]:
     return sorted(p for p in config.DATA_PATH.rglob("*.pdf"))
 
 
-@st.cache_resource(show_spinner="Preparando el documento (solo la primera vez, puede tardar unos minutos)…")
+@st.cache_resource
+def _build_lock() -> threading.Lock:
+    """One lock for the whole server, so two first visitors don't index at the same time."""
+    return threading.Lock()
+
+
 def ensure_index() -> int:
-    collection = get_collection()
-    if collection.count() == 0:
-        build_database()
-    return collection.count()
+    """Index the PDF on the very first visit, showing the steps; afterwards it's instant."""
+    if get_collection().count() > 0:
+        return get_collection().count()
+    slot = st.empty()
+    html(ui.preparing_card("read"), slot)
+    with _build_lock():
+        if get_collection().count() == 0:
+            build_database(progress=lambda stage, done, total: html(ui.preparing_card(stage, done, total), slot))
+    slot.empty()
+    return get_collection().count()
 
 
 def set_question(q: str):
@@ -91,8 +103,7 @@ def render_result(answer, slot, animate: bool = True):
 
 
 # ---------- Header ----------
-_, theme_col = st.columns([3, 2])
-theme_col.segmented_control(
+st.segmented_control(
     "Tema",
     options=list(THEMES),
     format_func=lambda k: f":material/{THEMES[k][0]}: {THEMES[k][1]}",
@@ -158,7 +169,6 @@ with st.sidebar:
                     f"Añadidos {result.added} fragmentos. Los que ya existían no se han vuelto a procesar.",
                     icon=":material/check_circle:",
                 )
-                ensure_index.clear()
                 st.rerun()
 
     st.divider()

@@ -85,3 +85,13 @@ def test_theme_uses_only_the_palette():
         for value in tokens.values():
             for hex_colour in re.findall(r"#[0-9A-Fa-f]{6}", value):
                 assert hex_colour.upper() in allowed, hex_colour
+
+
+def test_preparing_card_shows_the_current_step_and_progress():
+    from ui.components import preparing_card
+
+    reading = preparing_card("read")
+    assert reading.count('class="is-now"') == 1 and "is-done" not in reading
+    embedding = preparing_card("embed", 128, 512)
+    assert embedding.count('class="is-done"') == 1 and "128 de 512 fragmentos" in embedding
+    assert 'aria-valuenow="128"' in embedding and "width:25%" in embedding

@@ -79,6 +79,44 @@ def searching_card(chunk_count: int) -> str:
     )
 
 
+PREPARE_STEPS = [
+    ("read", "Leer el Estatuto y dividirlo por artículos"),
+    ("embed", "Calcular el significado de cada fragmento"),
+    ("ready", "Listo para preguntar"),
+]
+
+
+def preparing_card(stage: str, done: int = 0, total: int = 0) -> str:
+    """First-visit indexing, shown as steps with the embedding progress (stage: "read" or "embed")."""
+    order = [key for key, _ in PREPARE_STEPS]
+    current = order.index(stage) if stage in order else 0
+    items = []
+    for i, (key, label) in enumerate(PREPARE_STEPS):
+        if i < current:
+            state, mark = "is-done", icon("check_circle")
+        elif i == current:
+            state, mark = "is-now", icon("progress_activity", "lx-rotate")
+        else:
+            state, mark = "", icon("radio_button_unchecked")
+        detail = ""
+        if key == "embed" and i == current and total:
+            pct = 100 * done / total
+            detail = (
+                f'<span class="lx-prep-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{total}" '
+                f'aria-valuenow="{done}"><i style="width:{pct:.0f}%"></i></span>'
+                f'<span class="lx-prep-count">{done} de {total} fragmentos</span>'
+            )
+        items.append(f'<li class="{state}">{mark}<span class="lx-prep-label">{label}{detail}</span></li>')
+    return (
+        '<section class="lx-answer lx-prep" aria-live="polite" aria-busy="true">'
+        f'<div class="lx-h" role="heading" aria-level="2">{icon("auto_stories")}Preparando el Estatuto</div>'
+        f'<ol class="lx-prep-steps">{"".join(items)}</ol>'
+        '<p class="lx-note">Solo pasa la primera vez que se abre la demo: tarda un par de minutos. '
+        "Después las respuestas llegan al momento.</p>"
+        "</section>"
+    )
+
+
 def not_found_card(text: str, best_relevance: float, threshold: float) -> str:
     return (
         '<section class="lx-answer lx-notfound" aria-live="polite">'

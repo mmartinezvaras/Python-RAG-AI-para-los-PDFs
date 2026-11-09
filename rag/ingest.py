@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -191,8 +192,16 @@ class SyncResult:
     total: int
 
 
+# progress(stage, done, total) with stage "read" (loading and splitting the PDFs) or "embed".
+Progress = Callable[[str, int, int], None]
+
+
 def sync_index(
-    chunks: list[Document], chroma_path: Path | str = config.CHROMA_PATH, embedding_function=None, batch: int = 64
+    chunks: list[Document],
+    chroma_path: Path | str = config.CHROMA_PATH,
+    embedding_function=None,
+    batch: int = 64,
+    progress: Progress | None = None,
 ) -> SyncResult:
     collection = get_collection(chroma_path)
     stored = collection.get(include=["metadatas"])
@@ -210,6 +219,8 @@ def sync_index(
         by_id = {c.metadata["id"]: c for c in chunks}
         new_chunks = [by_id[i] for i in to_add]
         print(f"👉 Embedding {len(new_chunks)} chunks")
+        if progress:
+            progress("embed", 0, len(new_chunks))
         for start in range(0, len(new_chunks), batch):
             part = new_chunks[start : start + batch]
             collection.add(
@@ -220,15 +231,20 @@ def sync_index(
                 ],
                 embeddings=embeddings.embed_documents([c.page_content for c in part]),
             )
-            print(f"   {min(start + batch, len(new_chunks))}/{len(new_chunks)}")
+            done = min(start + batch, len(new_chunks))
+            print(f"   {done}/{len(new_chunks)}")
+            if progress:
+                progress("embed", done, len(new_chunks))
 
     result = SyncResult(added=len(to_add), deleted=len(to_delete), total=collection.count())
     print(f"✅ Index in sync: +{result.added} added, −{result.deleted} removed, {result.total} chunks in total")
     return result
 
 
-def build_database(reset: bool = False, download: bool = True) -> SyncResult:
+def build_database(reset: bool = False, download: bool = True, progress: Progress | None = None) -> SyncResult:
     """Make the index match the PDFs in data/ (downloading the dataset first if missing)."""
+    if progress:
+        progress("read", 0, 0)
     if download:
         from rag.documents import download_missing
 
@@ -236,4 +252,4 @@ def build_database(reset: bool = False, download: bool = True) -> SyncResult:
     if reset:
         print("✨ Clearing database")
         clear_database()
-    return sync_index(prepare_chunks())
+    return sync_index(prepare_chunks(), progress=progress)

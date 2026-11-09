@@ -159,6 +159,32 @@ html { -webkit-tap-highlight-color: transparent; }
   color: var(--lx-sheet) !important;
 }
 
+/* Theme switch: one pill, right-aligned, always fully visible (no horizontal scroll). */
+.st-key-theme { display: flex; justify-content: flex-end; width: 100%; }
+.st-key-theme > div, .st-key-theme [data-testid="stButtonGroup"] {
+  width: auto !important; max-width: 100%; overflow: visible !important;
+}
+.st-key-theme [data-testid="stButtonGroup"] {
+  display: inline-flex; flex-wrap: nowrap; gap: 2px; padding: 3px;
+  background: var(--lx-sheet); border-radius: 999px; box-shadow: 0 0 0 1px var(--lx-ring), var(--lx-lift);
+}
+/* Streamlit's inner wrappers scroll horizontally when space is tight: let them size to their content */
+.st-key-theme [data-testid="stButtonGroup"] div:not(button div) {
+  overflow: visible !important; flex-wrap: nowrap !important; width: auto !important; gap: 2px;
+}
+.st-key-theme [data-testid="stButtonGroup"] button {
+  flex: 0 0 auto; white-space: nowrap; min-height: 0; margin: 0 !important;
+  padding: .32rem .8rem !important; border: 0 !important; border-radius: 999px !important;
+  background: transparent; font-size: .85rem;
+  transition: background-color 200ms var(--lx-ease-out), color 200ms var(--lx-ease-out), transform 160ms var(--lx-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .st-key-theme [data-testid="stButtonGroup"] button:hover { background: var(--lx-seal-soft); }
+}
+@media (max-width: 420px) {
+  .st-key-theme [data-testid="stButtonGroup"] button { padding: .32rem .6rem !important; font-size: .8rem; }
+}
+
 /* Sidebar widgets */
 [data-testid="stExpander"] details {
   background: var(--lx-paper); border: 1px solid var(--lx-rule); border-radius: 12px;
@@ -224,6 +250,19 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 .lx-notfound { border-left-color: var(--lx-ink-2); }
 .lx-notfound .lx-h .ms { color: var(--lx-ink-2); }
+
+/* First-visit preparation */
+.lx-prep-steps { list-style: none; margin: .2rem 0 .9rem; padding: 0; display: grid; gap: .7rem; }
+.lx-prep-steps li { display: flex; align-items: flex-start; color: var(--lx-ink-2); font-size: .98rem; line-height: 1.4; }
+.lx-prep-steps li .ms { font-size: 1.25rem; margin-right: .6rem; flex: none; }
+.lx-prep-steps li.is-done { color: var(--lx-ink); }
+.lx-prep-steps li.is-now { color: var(--lx-ink); font-weight: 600; }
+.lx-prep-steps li.is-now .ms, .lx-prep-steps li.is-done .ms { color: var(--lx-seal); }
+.lx-prep-label { display: flex; flex-direction: column; gap: .45rem; min-width: 0; flex: 1; }
+.lx-prep-bar { display: block; height: .4rem; max-width: 22rem; border-radius: 999px; background: var(--lx-skel); overflow: hidden; }
+.lx-prep-bar i { display: block; height: 100%; background: var(--lx-seal); border-radius: inherit; }
+.lx-prep-count { font-size: .82rem; font-weight: 500; color: var(--lx-ink-2); font-variant-numeric: tabular-nums; }
+.lx-rotate { display: inline-block; animation: lx-turn 900ms linear infinite; }
 
 /* Searching */
 .lx-searching .lx-h { color: var(--lx-ink); }
@@ -311,6 +350,7 @@ html { -webkit-tap-highlight-color: transparent; }
 
 @keyframes lx-blink { to { visibility: hidden; } }
 @keyframes lx-pulse { 50% { opacity: .45; } }
+@keyframes lx-turn { to { transform: rotate(360deg); } }
 @keyframes lx-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 @keyframes lx-enter { from { opacity: 0; transform: translateY(8px); } }
 @keyframes lx-stamp {
@@ -323,6 +363,7 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* Reduced motion: fewer and gentler, not zero. Keep fades, drop movement. */
 @media (prefers-reduced-motion: reduce) {
+  .lx-rotate { animation-duration: 2.4s; }
   .lx-src { animation-name: lx-fade; }
   .lx-stamp { animation-name: lx-fade; }
   .lx-skel { animation: none; }

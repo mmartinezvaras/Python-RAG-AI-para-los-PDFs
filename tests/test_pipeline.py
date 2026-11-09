@@ -105,7 +105,11 @@ def test_index_sync_is_incremental_and_handles_changes(tmp_path, fake_embeddings
     chunks = prepare_chunks(FIXTURES)
     db = str(tmp_path / "chroma")
 
-    first = sync_index(chunks, chroma_path=db, embedding_function=fake_embeddings)
+    calls = []
+    first = sync_index(
+        chunks, chroma_path=db, embedding_function=fake_embeddings, batch=4, progress=lambda *a: calls.append(a)
+    )
+    assert calls[0] == ("embed", 0, len(chunks)) and calls[-1] == ("embed", len(chunks), len(chunks))
     assert (first.added, first.deleted, first.total) == (len(chunks), 0, len(chunks))
 
     again = sync_index(prepare_chunks(FIXTURES), chroma_path=db, embedding_function=fake_embeddings)
