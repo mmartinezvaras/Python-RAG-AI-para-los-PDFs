@@ -71,10 +71,24 @@ jobs:
           python populate_database.py --no-download
           python -m rag.embedding_cache
 
+      - name: Save the embedding cache right away (so a later failure doesn't spend the quota again)
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/embeddings-gemini-embedding-001.npz
+          if ! git diff --cached --quiet; then
+            git commit -qm "Gemini embedding cache"
+            git pull -q --rebase origin main
+            git push origin HEAD:main
+          fi
+
       - name: Calibrate the relevance gate for Gemini embeddings
         if: steps.key.outputs.ok == 'true'
         run: |
+          set -o pipefail
           threshold=$(RAG_EVAL_PAUSE=1 python -m eval.run_eval --suggest-threshold | tail -1)
+          [[ "$threshold" =~ ^[0-9]+\.[0-9]+$ ]] || { echo "::error::Calibration did not print a number: $threshold"; exit 1; }
           echo "Calibrated RAG_MIN_RELEVANCE: $threshold" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "RAG_MIN_RELEVANCE=$threshold" >> "$GITHUB_ENV"
 
@@ -106,6 +120,7 @@ jobs:
           name: gemini
           path: |
             eval/results-gemini.md
+            data/embeddings-gemini-embedding-001.npz
             demo.gif
             demo.webm
             streamlit.log

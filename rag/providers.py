@@ -45,12 +45,13 @@ def _post(base_url: str, path: str, api_key: str, payload: dict, stream: bool = 
                 continue
             detail = exc.read().decode(errors="replace")[:500]
             raise ApiError(f"{exc.code} from {url}: {detail}") from exc
-        except urllib.error.URLError as exc:
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            # The free tier sometimes stalls a response until the read times out: retry those too.
             if attempt < retries:
                 time.sleep(delay)
                 delay *= 2
                 continue
-            raise ApiError(f"Can't reach {url}: {exc.reason}") from exc
+            raise ApiError(f"Can't reach {url}: {getattr(exc, 'reason', exc)}") from exc
     raise ApiError("unreachable")  # pragma: no cover
 
 
