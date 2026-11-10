@@ -28,6 +28,7 @@ jobs:
       RAG_EMBED_MODEL: gemini-embedding-001
       RAG_CHROMA_PATH: chroma-gemini
       RAG_EVAL_PAUSE: "4" # free tier: a few requests per minute
+      RAG_EMBED_PER_MINUTE: "90" # Gemini free tier: 100 embedded texts a minute
     steps:
       - name: Check the API key
         id: key

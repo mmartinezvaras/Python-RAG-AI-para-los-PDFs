@@ -11,6 +11,7 @@ standard library, so the online demo needs no extra SDK.
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -39,7 +40,8 @@ def _post(base_url: str, path: str, api_key: str, payload: dict, stream: bool = 
             return urllib.request.urlopen(req, timeout=120)
         except urllib.error.HTTPError as exc:
             if exc.code in (429, 500, 502, 503, 504) and attempt < retries:
-                wait = float(exc.headers.get("Retry-After") or delay)
+                # A per-minute limit only clears after a full minute.
+                wait = float(exc.headers.get("Retry-After") or (61 if exc.code == 429 else delay))
                 time.sleep(min(wait, 60))
                 delay *= 2
                 continue
@@ -103,8 +105,12 @@ class OpenAICompatibleEmbeddings:
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         vectors: list[list[float]] = []
+        # Free tiers count every text as one request (Gemini: 100 a minute), so pace the batches.
+        per_minute = int(os.getenv("RAG_EMBED_PER_MINUTE") or 0)
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i : i + self.batch_size]
+            if per_minute and i:
+                time.sleep(60 * len(batch) / per_minute)
             with _post(self.base_url, "embeddings", self.api_key, {"model": self.model, "input": batch}) as resp:
                 data = json.load(resp)["data"]
             # OpenAI numbers each item with "index"; Gemini's compatible API omits it and
