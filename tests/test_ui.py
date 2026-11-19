@@ -102,3 +102,17 @@ def test_problem_card_escapes_the_message():
 
     html = problem_card("Error <b>429</b>")
     assert "&lt;b&gt;429" in html and 'role="alert"' in html
+
+
+def test_project_page_explains_steps_problems_and_technologies():
+    from ui.project_page import PROBLEMS, PROJECT_CSS, STEPS, TECH, project_html
+
+    html = project_html()
+    for title in ("Los pasos", "Los problemas y cómo los resolví", "Las tecnologías", "Los resultados"):
+        assert title in html
+    assert html.count('class="hx-row"') == len(PROBLEMS)
+    assert all(t in html for t, _ in STEPS) and all(t in html for t, _ in TECH)
+    # Uses this demo's theme variables, so the Claro / Noche switch also works on that page.
+    assert "var(--lx-ink)" in PROJECT_CSS and "#000000" not in PROJECT_CSS
+    # Static text that Streamlit might read as Markdown or LaTeX
+    assert "$" not in html and "**" not in html

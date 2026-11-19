@@ -185,6 +185,20 @@ html { -webkit-tap-highlight-color: transparent; }
   .st-key-theme [data-testid="stButtonGroup"] button { padding: .32rem .6rem !important; font-size: .8rem; }
 }
 
+/* Links between pages (st.page_link): a quiet pill, like the example buttons */
+[data-testid="stPageLink"] a {
+  display: inline-flex; width: auto; padding: .3rem .85rem; margin: 0 0 .4rem; border-radius: 999px;
+  background: var(--lx-sheet); border: 1px solid var(--lx-rule); text-decoration: none;
+  transition: border-color 150ms ease, background-color 150ms ease, transform 160ms var(--lx-ease-out);
+}
+[data-testid="stPageLink"] a p, [data-testid="stPageLink"] a span { color: var(--lx-ink) !important; font-weight: 500; font-size: .9rem; }
+[data-testid="stPageLink"] a [data-testid="stIconMaterial"] { color: var(--lx-seal) !important; }
+@media (hover: hover) and (pointer: fine) {
+  [data-testid="stPageLink"] a:hover { border-color: var(--lx-seal); background: var(--lx-seal-soft); }
+}
+[data-testid="stPageLink"] a:active { transform: scale(.97); }
+[data-testid="stSidebar"] [data-testid="stPageLink"] a { background: transparent; border: 0; padding: .2rem 0; }
+
 /* Sidebar widgets */
 [data-testid="stExpander"] details {
   background: var(--lx-paper); border: 1px solid var(--lx-rule); border-radius: 12px;

@@ -7,3 +7,5 @@ primaryColor = "#000000"
 
 [client]
 toolbarMode = "minimal"
+# Pages are linked from the header (st.page_link), not from Streamlit's automatic sidebar menu.
+showSidebarNavigation = false

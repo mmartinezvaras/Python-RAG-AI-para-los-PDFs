@@ -26,7 +26,7 @@ from rag.answer import stream_answer  # noqa: E402
 from rag.documents import page_link, source_info  # noqa: E402
 from rag.ingest import build_database, get_collection  # noqa: E402
 from ui import components as ui  # noqa: E402
-from ui.theme import page_css  # noqa: E402
+from ui.header import theme_css_and_switch  # noqa: E402
 
 # (button label, icon, question)
 EXAMPLES = [
@@ -37,14 +37,11 @@ EXAMPLES = [
     ("Pregunta en inglés", "translate", "How many days of paid annual leave does a worker get?"),
     ("Algo que no está en la ley", "help", "¿Quién ganó el Tour de Francia en 2018?"),
 ]
-THEMES = {"auto": ("brightness_auto", "Auto"), "light": ("light_mode", "Claro"), "dark": ("dark_mode", "Noche")}
 MAX_UPLOAD_MB = 25
 
 st.set_page_config(page_title="Pregunta al Estatuto de los Trabajadores", page_icon=":material/balance:")
-# The theme switch can be cleared (None): fall back to following the system setting.
-# st.html, not st.markdown: CSS is full of "*" (selectors, calc, comments), which Markdown would
-# turn into emphasis and break the stylesheet.
-st.html(page_css(st.session_state.get("theme") or "auto"))
+# Theme CSS + the Auto / Claro / Noche switch (shared with the "Cómo está hecho" page).
+theme_css_and_switch()
 
 
 # ---------- Helpers ----------
@@ -131,18 +128,15 @@ def render_result(answer, slot, animate: bool = True):
 
 
 # ---------- Header ----------
-st.segmented_control(
-    "Tema",
-    options=list(THEMES),
-    format_func=lambda k: f":material/{THEMES[k][0]}: {THEMES[k][1]}",
-    default="auto",
-    key="theme",
-    label_visibility="collapsed",
-)
 html(
     '<header class="lx-hero"><h1>¿Qué dice el Estatuto de los Trabajadores?</h1>'
     "<p>Pregunta en español o en inglés. La respuesta sale <strong>solo</strong> del texto oficial del BOE "
     "y cita el artículo y la página de donde viene; si no está en la ley, te lo dice.</p></header>"
+)
+st.page_link(
+    "pages/como_esta_hecho.py",
+    label="Cómo está hecho: pasos, problemas y tecnologías",
+    icon=":material/arrow_forward:",
 )
 
 # ---------- Health checks (local Ollama only) ----------
@@ -209,6 +203,7 @@ with st.sidebar:
             "3. **Responde** solo con esos fragmentos y cita cada dato con su número.\n\n"
             f"Modelo `{config.LLM_MODEL}`, embeddings `{config.EMBED_MODEL}`, base vectorial ChromaDB."
         )
+    st.page_link("pages/como_esta_hecho.py", label="Cómo está hecho", icon=":material/construction:")
     st.markdown(":material/code: [Código en GitHub](https://github.com/mmartinezvaras/Python-RAG-AI-para-los-PDFs)")
 
 # ---------- Question ----------
