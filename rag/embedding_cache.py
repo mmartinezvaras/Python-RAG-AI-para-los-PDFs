@@ -23,7 +23,8 @@ from rag import config
 
 def cache_path(model: str | None = None, data_path: Path | None = None) -> Path:
     model = model or config.EMBED_MODEL
-    return Path(data_path or config.DATA_PATH) / f"embeddings-{re.sub(r'[^\w.-]', '_', model)}.npz"
+    safe_name = re.sub(r"[^\w.-]", "_", model)
+    return Path(data_path or config.DATA_PATH) / f"embeddings-{safe_name}.npz"
 
 
 def load(path: Path | None = None) -> dict[tuple[str, str], list[float]]:
