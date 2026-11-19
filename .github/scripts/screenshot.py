@@ -67,6 +67,28 @@ with sync_playwright() as p:
         const t = b.querySelector('p') || b; const cs = getComputedStyle(t), bs = getComputedStyle(b);
         return `${b.getAttribute('data-testid')} "${b.innerText.trim()}": text ${cs.color} on ${bs.backgroundColor}`;
     }).join('\\n')"""))
+
+    # The "Cómo está hecho" page: opened from the header link, keeps the night theme, then light.
+    page.get_by_role("link", name="Cómo está hecho: pasos, problemas y tecnologías").click()
+    page.get_by_text("Cómo está hecho el asistente del Estatuto").wait_for(timeout=60_000)
+    time.sleep(1.5)  # header entrance animation
+    paper = page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim()")
+    assert paper == "#000000", f"The night theme was lost when changing page ({paper})"
+    for section in ("Los pasos", "Los problemas y cómo los resolví", "Las tecnologías"):
+        assert page.get_by_text(section, exact=True).count() == 1, f"Missing section: {section}"
+    page.screenshot(path="project-dark.png", full_page=True)
+    page.get_by_text("Claro", exact=True).click()
+    page.wait_for_function(
+        "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#F5F5F7'",
+        timeout=30_000,
+    )
+    time.sleep(1)
+    page.screenshot(path="project.png", full_page=True)
+    page.set_viewport_size({"width": 390, "height": 1500})
+    time.sleep(1)
+    page.screenshot(path="project-mobile.png", full_page=True)
+    page.get_by_role("link", name="Volver a la demo").click()
+    page.get_by_text("¿Qué dice el Estatuto de los Trabajadores?").wait_for(timeout=60_000)
     browser.close()
 
-print("✅ Web demo works in light and night themes")
+print("✅ Web demo works in light and night themes, and so does the 'Cómo está hecho' page")
