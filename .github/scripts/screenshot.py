@@ -69,6 +69,8 @@ with sync_playwright() as p:
     }).join('\\n')"""))
 
     # The "Cómo está hecho" page: opened from the header link, keeps the night theme, then light.
+    # Streamlit scrolls inside its own container, so full_page can't grow the picture: a tall view can.
+    page.set_viewport_size({"width": 1280, "height": 4400})
     page.get_by_role("link", name="Cómo está hecho: pasos, problemas y tecnologías").click()
     page.get_by_text("Cómo está hecho el asistente del Estatuto").wait_for(timeout=60_000)
     time.sleep(1.5)  # header entrance animation
@@ -84,7 +86,7 @@ with sync_playwright() as p:
     )
     time.sleep(1)
     page.screenshot(path="project.png", full_page=True)
-    page.set_viewport_size({"width": 390, "height": 1500})
+    page.set_viewport_size({"width": 390, "height": 6000})
     time.sleep(1)
     page.screenshot(path="project-mobile.png", full_page=True)
     page.get_by_role("link", name="Volver a la demo").click()

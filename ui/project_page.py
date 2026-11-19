@@ -146,6 +146,8 @@ table.hx-t td.win { font-weight: 700; }
 .hx-list li { font-size: .94rem; line-height: 1.5; color: var(--lx-ink); margin: .25rem 0; }
 .hx-foot { margin-top: 2.8rem; font-size: .85rem; color: var(--lx-ink-2); text-align: center; line-height: 1.6; }
 .hx a { color: var(--lx-ink) !important; text-underline-offset: 3px; }
+/* The demo's theme paints every .stApp p with the main ink: secondary text needs the same weight */
+.stApp .hx p.hx-lead, .stApp .hx p.hx-hint, .stApp .hx .hx-row .sol p, .stApp .hx .hx-foot { color: var(--lx-ink-2); }
 
 /* Gentle entrance of the header, only when the page opens */
 @media (prefers-reduced-motion: no-preference) {
