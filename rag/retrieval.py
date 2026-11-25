@@ -112,6 +112,9 @@ class Passage:
 class SearchResult:
     passages: list[Passage] = field(default_factory=list)
     best_relevance: float = 0.0  # best cosine similarity among all candidates
+    # True when the question couldn't be turned into a vector (e.g. the embeddings API is out
+    # of quota) and only the keyword search ran: there is no similarity to judge relevance by.
+    keyword_only: bool = False
 
 
 class Retriever:
@@ -140,8 +143,16 @@ class Retriever:
         if not self.ids:
             return SearchResult()
 
-        q_vec = self.embeddings.embed_query(query)
         n = min(config.CANDIDATES, len(self.ids))
+        try:
+            q_vec = self.embeddings.embed_query(query)
+        except Exception as exc:  # the embeddings API failed: keyword search still works
+            from rag.providers import ApiError
+
+            if not isinstance(exc, (ApiError, ConnectionError, TimeoutError, OSError)):
+                raise
+            return self._keyword_search(query, k)
+
         res = self.collection.query(query_embeddings=[q_vec], n_results=n, include=["embeddings"])
         vector_ids = res["ids"][0]
         relevance = {i: cosine(q_vec, e) for i, e in zip(vector_ids, res["embeddings"][0])}
@@ -156,6 +167,16 @@ class Retriever:
         else:
             ranked = vector_ids[:k]
 
+        passages = self._passages(ranked, relevance)
+        return SearchResult(passages=passages, best_relevance=max(relevance.values(), default=0.0))
+
+    def _keyword_search(self, query: str, k: int) -> SearchResult:
+        """BM25 only. Passages that share no word with the question are left out, so an
+        unrelated question still gets 'not in the documents'."""
+        ranked = [self.ids[i] for i in self.bm25.top(query, k)]  # top() drops zero scores
+        return SearchResult(passages=self._passages(ranked, {}), keyword_only=True)
+
+    def _passages(self, ranked: list[str], relevance: dict[str, float]) -> list[Passage]:
         passages = []
         for number, pid in enumerate(ranked, start=1):
             meta = self.metas.get(pid) or {}
@@ -170,4 +191,4 @@ class Retriever:
                     number=number,
                 )
             )
-        return SearchResult(passages=passages, best_relevance=max(relevance.values(), default=0.0))
+        return passages

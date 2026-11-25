@@ -57,6 +57,13 @@ PROBLEMS = [
         "La demo arranca sin gastar cuota; solo las preguntas de los visitantes la usan.",
     ),
     (
+        "La demo es pública (la enlazo en LinkedIn) y no puede dejar de responder porque se acabe la cuota "
+        "gratuita de Gemini.",
+        "Varias capas: las respuestas ya escritas se reutilizan para todos los visitantes, si un modelo se queda "
+        "sin cuota responde el siguiente (cada modelo tiene la suya), si la pregunta no se puede convertir en "
+        "vector se busca por palabras clave y, como último recurso, se señalan los artículos que la responden.",
+    ),
+    (
         "El servidor del BOE a veces no respondía y la demo no arrancaba.",
         "Reintentos al descargar y una copia del PDF oficial dentro del repositorio.",
     ),

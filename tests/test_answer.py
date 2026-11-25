@@ -126,3 +126,70 @@ def test_questions_in_another_language_are_translated_for_retrieval(patch_pipeli
     monkeypatch.setattr(config, "DOC_LANGUAGE", "")
     answer_question("How many hours?")
     assert llm.retriever.queries[-1] == "How many hours?"
+
+
+# ---------- The public demo keeps answering when the free quotas run out ----------
+
+
+@pytest.fixture(autouse=True)
+def _fresh_answer_memory():
+    answer_mod.clear_stored_answers()
+    yield
+    answer_mod.clear_stored_answers()
+
+
+class QuotaExhaustedLLM:
+    """Every call fails as Gemini does when the free daily quota is used up."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def complete(self, prompt):
+        from rag.providers import ApiError
+
+        self.calls += 1
+        raise ApiError("429 RESOURCE_EXHAUSTED", status=429)
+
+    def stream(self, prompt):
+        from rag.providers import ApiError
+
+        self.calls += 1
+        raise ApiError("429 RESOURCE_EXHAUSTED", status=429)
+        yield  # pragma: no cover  (makes this a generator, like a real stream)
+
+
+def test_with_no_model_available_the_answer_points_to_the_passages(patch_pipeline):
+    patch_pipeline(SearchResult(passages=[_passage(1), _passage(2), _passage(3)], best_relevance=0.8),
+                   llm=QuotaExhaustedLLM())
+    answer = answer_question("¿Cuántos días de vacaciones tengo?")
+    assert not answer.written_by_model and answer.grounded
+    assert "límite gratuito" in answer.text
+    assert [p.number for p in answer.cited] == [1, 2]  # the page highlights where the answer is
+
+
+def test_an_english_question_still_works_when_the_translation_fails(patch_pipeline):
+    llm = QuotaExhaustedLLM()
+    patch_pipeline(SearchResult(passages=[_passage(1)], best_relevance=0.8), llm=llm)
+    answer = answer_question("How many days of holiday do I get?")
+    assert llm.retriever.queries == ["How many days of holiday do I get?"]  # searched untranslated
+    assert "free limit" in answer.text
+
+
+def test_a_question_asked_again_is_answered_without_calling_the_model(patch_pipeline):
+    llm = patch_pipeline(SearchResult(passages=[_passage(1)], best_relevance=0.8))
+    first = answer_question("¿Cuántos días de vacaciones tengo?")
+    again = answer_question("cuántos días de vacaciones tengo")  # same question, other punctuation
+    assert again.text == first.text and [p.number for p in again.cited] == [1]
+    assert len(llm.prompts) == 1 and len(llm.retriever.queries) == 1
+
+
+def test_an_answer_without_a_model_is_not_remembered(patch_pipeline):
+    patch_pipeline(SearchResult(passages=[_passage(1)], best_relevance=0.8), llm=QuotaExhaustedLLM())
+    answer_question("¿Cuántos días de vacaciones tengo?")
+    assert answer_mod._ANSWERS == {}  # tomorrow, with quota again, the model will write it
+
+
+def test_keyword_only_search_skips_the_similarity_gate(patch_pipeline):
+    llm = patch_pipeline(SearchResult(passages=[_passage(1)], best_relevance=0.0, keyword_only=True))
+    answer = answer_question("¿Cuántos días de vacaciones tengo?")
+    assert answer.grounded and len(llm.prompts) == 1
