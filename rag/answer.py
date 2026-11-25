@@ -48,14 +48,31 @@ NO_MODEL = {
     ),
 }
 
-_SPANISH_HINTS = re.compile(
-    r"[¿¡ñáéíóú]|\b(qué|que|cuántos?|cuántas?|cuál|cómo|dónde|cuando|cuándo|puede|tengo|los|las|del|para|por)\b",
-    re.IGNORECASE,
+_SPANISH_CHARS = re.compile(r"[¿¡ñáéíóúü]", re.IGNORECASE)
+# Short, very common words that tell the two languages apart. Visitors often write without
+# accents or the opening "¿" ("pone algo de la jubilacion?"), so the words matter more than marks.
+_SPANISH_WORDS = set(
+    "que qué cuanto cuantos cuantas cuál cual como cómo donde dónde cuando cuándo puede pueden tengo "
+    "los las del para por de la el en y con se me mi mis hay algo pone dice si es son al lo un una "
+    "sobre trabajador trabajadora empresa contrato dias días horas despido jubilacion jubilación edad "
+    "vacaciones salario permiso año ano paga jornada excedencia baja nomina nómina indemnizacion".split()
+)
+_ENGLISH_WORDS = set(
+    "the what how many much is are do does did can could my i of to in for about when where which "
+    "who after before have has get worker workers company contract days hours dismissal law age "
+    "retirement holiday holidays leave pay salary overtime notice severance year per paid unfair".split()
 )
 
 
 def detect_language(text: str) -> str:
-    return "es" if _SPANISH_HINTS.search(text) else "en"
+    """'es' or 'en'. The documents and most visitors are Spanish, so a question only counts as
+    English when its words clearly are; a tie (or a single word like "vacaciones?") is Spanish."""
+    if _SPANISH_CHARS.search(text):
+        return "es"
+    words = re.findall(r"[a-záéíóúüñ]+", text.lower())
+    spanish = sum(w in _SPANISH_WORDS for w in words)
+    english = sum(w in _ENGLISH_WORDS for w in words)
+    return "en" if english > spanish else "es"
 
 
 def passage_label(p: Passage) -> str:
