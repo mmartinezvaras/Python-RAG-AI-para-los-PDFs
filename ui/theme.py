@@ -292,7 +292,7 @@ html { -webkit-tap-highlight-color: transparent; }
 /* Waiting for the answer: a seconds counter (an animated integer shown through a CSS counter),
    a bar that reaches 85 % at the usual time and then creeps on, and a note when it's slow.
    --lx-t0 is a negative delay, so redrawing the card for the next step doesn't restart them. */
-@property --lx-secs { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --lx-secs { syntax: "\\3C integer\\3E "; inherits: false; initial-value: 0; }  /* the integer type, escaped: a raw angle bracket would read as HTML */
 .lx-searching .lx-prep-steps { margin: .2rem 0 1rem; }
 .lx-wait { display: grid; gap: .5rem; }
 .lx-wait-bar { display: block; height: .4rem; max-width: 26rem; border-radius: 999px; background: var(--lx-skel); overflow: hidden; }

@@ -127,3 +127,13 @@ def test_waiting_card_shows_the_step_a_counter_and_keeps_counting_across_steps()
     assert later.count('class="is-done"') == 1  # the search step is ticked off
     assert "--lx-t0: -4.2s" in later or "--lx-t0: -4.3s" in later  # counter and bar carry on
     assert "lx-wait-secs" in later and "Suele tardar" in later and "más de lo normal" in later
+
+
+def test_the_stylesheet_has_no_angle_brackets():
+    """Streamlit reads a '<' inside the CSS as the start of an HTML tag and then drops the whole
+    stylesheet (the night theme stopped switching once because of a CSS '<integer>')."""
+    from ui.theme import page_css
+
+    for mode in ("auto", "light", "dark"):
+        css = page_css(mode)
+        assert "<" not in css[len("<style>") : -len("</style>")]
