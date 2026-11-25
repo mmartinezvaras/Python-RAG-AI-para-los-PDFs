@@ -193,3 +193,12 @@ def test_keyword_only_search_skips_the_similarity_gate(patch_pipeline):
     llm = patch_pipeline(SearchResult(passages=[_passage(1)], best_relevance=0.0, keyword_only=True))
     answer = answer_question("¿Cuántos días de vacaciones tengo?")
     assert answer.grounded and len(llm.prompts) == 1
+
+
+def test_spanish_without_accents_or_opening_mark_is_still_spanish():
+    # Real visitor question that got an answer in English
+    assert detect_language("pone algo de la jubilacion?") == "es"
+    assert detect_language("cuanto cobro si me despiden") == "es"
+    assert detect_language("vacaciones?") == "es"  # one word: the documents' language
+    assert detect_language("Retirement age?") == "en"
+    assert detect_language("can I work at 16") == "en"
