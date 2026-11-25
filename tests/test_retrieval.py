@@ -104,3 +104,24 @@ def test_retriever_falls_back_to_keywords_when_the_question_cant_be_embedded(tmp
     result = retriever.search("¿Cuántos días de vacaciones tengo?", k=2)
     assert result.keyword_only and result.passages[0].articles == "38"
     assert retriever.search("receta de paella", k=2).passages == []  # no shared word: nothing
+
+
+def test_a_database_that_failed_to_open_is_opened_again(tmp_path, monkeypatch):
+    """Chroma remembers each open database for the whole process; a failed opening used to stay
+    broken until a reboot ('Could not connect to tenant default_tenant')."""
+    import chromadb
+
+    from rag import ingest
+
+    real = chromadb.PersistentClient
+    calls = []
+
+    def flaky(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise ValueError("Could not connect to tenant default_tenant. Are you sure it exists?")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(chromadb, "PersistentClient", flaky)
+    assert ingest.get_collection(str(tmp_path)).count() == 0
+    assert len(calls) == 2

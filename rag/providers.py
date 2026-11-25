@@ -38,12 +38,14 @@ def _post(
     stream: bool = False,
     retries: int = 5,
     max_wait: float = 60,
+    timeout: float = 120,
 ):
     """POST JSON with retries on rate limits / transient errors (free tiers return 429 often).
 
     ``max_wait``: the longest pause between attempts. Batch jobs (indexing, evaluation) can wait a
     full minute for a per-minute limit to clear; a visitor of the demo can't, so the demo uses a
-    short wait and moves on to another model instead (see ``FallbackLLM``)."""
+    short wait and moves on to another model instead (see ``FallbackLLM``). ``timeout``: seconds
+    without a byte from the server before giving up; the free tier sometimes goes quiet."""
     url = base_url.rstrip("/") + "/" + path.lstrip("/")
     body = json.dumps(payload).encode()
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
@@ -51,7 +53,7 @@ def _post(
     for attempt in range(retries + 1):
         req = urllib.request.Request(url, data=body, headers=headers, method="POST")
         try:
-            return urllib.request.urlopen(req, timeout=120)
+            return urllib.request.urlopen(req, timeout=timeout)
         except urllib.error.HTTPError as exc:
             if exc.code in (429, 500, 502, 503, 504) and attempt < retries:
                 # A per-minute limit only clears after a full minute.
@@ -100,9 +102,10 @@ class OpenAICompatibleLLM:
         temperature: float = 0.0,
         retries: int = 5,
         max_wait: float = 60,
+        timeout: float = 120,
     ):
         self.model, self.base_url, self.api_key, self.temperature = model, base_url, api_key, temperature
-        self.retries, self.max_wait = retries, max_wait
+        self.retries, self.max_wait, self.timeout = retries, max_wait, timeout
 
     def _payload(self, prompt: str, stream: bool) -> dict:
         return {
@@ -114,14 +117,17 @@ class OpenAICompatibleLLM:
 
     def complete(self, prompt: str) -> str:
         payload = self._payload(prompt, False)
-        with _post(self.base_url, "chat/completions", self.api_key, payload, False, self.retries, self.max_wait) as resp:
+        with _post(self.base_url, "chat/completions", self.api_key, payload, False, self.retries, self.max_wait, self.timeout) as resp:
             data = json.load(resp)
         return (data["choices"][0]["message"].get("content") or "").strip()
 
     def stream(self, prompt: str) -> Iterator[str]:
         payload = self._payload(prompt, True)
-        with _post(self.base_url, "chat/completions", self.api_key, payload, True, self.retries, self.max_wait) as resp:
-            yield from parse_sse_deltas(resp)
+        with _post(self.base_url, "chat/completions", self.api_key, payload, True, self.retries, self.max_wait, self.timeout) as resp:
+            try:
+                yield from parse_sse_deltas(resp)
+            except (TimeoutError, OSError) as exc:  # the server went quiet in the middle of the answer
+                raise ApiError(f"{self.model} stopped responding: {exc}") from exc
 
 
 class FallbackLLM:
@@ -194,12 +200,15 @@ class OpenAICompatibleEmbeddings:
         batch_size: int = 64,
         query_retries: int = 5,
         query_max_wait: float = 60,
+        query_timeout: float = 120,
     ):
         self.model, self.base_url, self.api_key, self.batch_size = model, base_url, api_key, batch_size
         # A visitor's question can't wait minutes; indexing (embed_documents) can.
-        self.query_retries, self.query_max_wait = query_retries, query_max_wait
+        self.query_retries, self.query_max_wait, self.query_timeout = query_retries, query_max_wait, query_timeout
 
-    def embed_documents(self, texts: list[str], retries: int = 5, max_wait: float = 60) -> list[list[float]]:
+    def embed_documents(
+        self, texts: list[str], retries: int = 5, max_wait: float = 60, timeout: float = 120
+    ) -> list[list[float]]:
         vectors: list[list[float]] = []
         # Free tiers count every text as one request (Gemini: 100 a minute), so pace the batches.
         per_minute = int(os.getenv("RAG_EMBED_PER_MINUTE") or 0)
@@ -208,7 +217,7 @@ class OpenAICompatibleEmbeddings:
             if per_minute and i:
                 time.sleep(60 * len(batch) / per_minute)
             payload = {"model": self.model, "input": batch}
-            with _post(self.base_url, "embeddings", self.api_key, payload, False, retries, max_wait) as resp:
+            with _post(self.base_url, "embeddings", self.api_key, payload, False, retries, max_wait, timeout) as resp:
                 data = json.load(resp)["data"]
             # OpenAI numbers each item with "index"; Gemini's compatible API omits it and
             # returns them in input order.
@@ -220,7 +229,7 @@ class OpenAICompatibleEmbeddings:
         return vectors
 
     def embed_query(self, text: str) -> list[float]:
-        return self.embed_documents([text], self.query_retries, self.query_max_wait)[0]
+        return self.embed_documents([text], self.query_retries, self.query_max_wait, self.query_timeout)[0]
 
 
 # ------------------------------------------------------------------------------------------
@@ -268,7 +277,7 @@ def get_embedding_function():
     provider = config.EMBEDDING_PROVIDER
     if provider == "openai":
         _require_key()
-        quick = {"query_retries": 1, "query_max_wait": 3} if config.PUBLIC_DEMO else {}
+        quick = {"query_retries": 1, "query_max_wait": 3, "query_timeout": 10} if config.PUBLIC_DEMO else {}
         return OpenAICompatibleEmbeddings(config.EMBED_MODEL, config.OPENAI_BASE_URL, config.OPENAI_API_KEY, **quick)
     if provider == "bedrock":
         import os
@@ -294,7 +303,7 @@ def get_llm(model: str | None = None):
     if config.LLM_PROVIDER != "openai":
         return OllamaChat(model or config.LLM_MODEL)
     _require_key()
-    patience = {"retries": 1, "max_wait": 3} if config.PUBLIC_DEMO else {}
+    patience = {"retries": 1, "max_wait": 3, "timeout": 20} if config.PUBLIC_DEMO else {}
 
     def one(name: str) -> OpenAICompatibleLLM:
         return OpenAICompatibleLLM(name, config.OPENAI_BASE_URL, config.OPENAI_API_KEY, **patience)

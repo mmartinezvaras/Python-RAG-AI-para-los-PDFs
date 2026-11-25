@@ -166,10 +166,33 @@ def prepare_chunks(data_path: Path | str = config.DATA_PATH) -> list[Document]:
 
 
 def _client(chroma_path: Path | str):
+    """Chroma keeps one open database per folder for the whole process. If opening it ever fails
+    half-way (it happened once on Streamlit Cloud while the app was waking up and updating at the
+    same time), that broken entry stays and every later visit fails with "Could not connect to
+    tenant default_tenant" until a reboot. So on failure we drop that entry and open it again."""
     import chromadb
     from chromadb.config import Settings
 
-    return chromadb.PersistentClient(path=str(chroma_path), settings=Settings(anonymized_telemetry=False))
+    def open_client():
+        return chromadb.PersistentClient(path=str(chroma_path), settings=Settings(anonymized_telemetry=False))
+
+    try:
+        return open_client()
+    except Exception:
+        _forget_open_databases()
+        return open_client()
+
+
+def _forget_open_databases() -> None:
+    try:
+        from chromadb.api.shared_system_client import SharedSystemClient
+    except ImportError:  # older layout
+        from chromadb.api.client import SharedSystemClient
+    try:
+        SharedSystemClient.clear_system_cache()
+    except Exception:
+        # Stopping a half-built system can fail too; forget it without stopping it.
+        getattr(SharedSystemClient, "_identifier_to_system", {}).clear()
 
 
 def get_collection(chroma_path: Path | str = config.CHROMA_PATH):
