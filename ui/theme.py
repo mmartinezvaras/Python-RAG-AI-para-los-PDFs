@@ -289,6 +289,38 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 .lx-skel:nth-child(2) { width: 92%; } .lx-skel:nth-child(3) { width: 64%; }
 
+/* Waiting for the answer: a seconds counter (an animated integer shown through a CSS counter),
+   a bar that reaches 85 % at the usual time and then creeps on, and a note when it's slow.
+   --lx-t0 is a negative delay, so redrawing the card for the next step doesn't restart them. */
+@property --lx-secs { syntax: "<integer>"; inherits: false; initial-value: 0; }
+.lx-searching .lx-prep-steps { margin: .2rem 0 1rem; }
+.lx-wait { display: grid; gap: .5rem; }
+.lx-wait-bar { display: block; height: .4rem; max-width: 26rem; border-radius: 999px; background: var(--lx-skel); overflow: hidden; }
+.lx-wait-bar i {
+  display: block; height: 100%; width: 0; background: var(--lx-seal); border-radius: inherit;
+  animation: lx-wait-fill var(--lx-typical, 10s) cubic-bezier(.2, .7, .4, 1) forwards,
+             lx-wait-creep 60s linear forwards;
+  animation-delay: var(--lx-t0, 0s), calc(var(--lx-t0, 0s) + var(--lx-typical, 10s));
+}
+.lx-wait-text { display: flex; gap: .55rem; align-items: baseline; flex-wrap: wrap; font-size: .85rem; color: var(--lx-ink-2); }
+.lx-wait-secs {
+  font-variant-numeric: tabular-nums; font-weight: 600; color: var(--lx-ink); min-width: 2.6em;
+  counter-reset: secs var(--lx-secs);
+  animation: lx-wait-count 600s steps(600, end) forwards; animation-delay: var(--lx-t0, 0s);
+}
+.lx-wait-secs::after { content: counter(secs) " s"; }
+/* The two notes share one spot; past the usual time the "slow" one takes over */
+.lx-wait-note { display: inline-grid; }
+.lx-wait-usual, .lx-wait-slow { grid-area: 1 / 1; }
+.lx-wait-slow { visibility: hidden; }
+.lx-wait-usual, .lx-wait-slow { animation: lx-wait-swap 1ms step-end forwards; animation-delay: calc(var(--lx-t0, 0s) + var(--lx-slow, 20s)); }
+.lx-wait-usual { animation-name: lx-wait-out; }
+@keyframes lx-wait-swap { to { visibility: visible; } }
+@keyframes lx-wait-out { to { visibility: hidden; } }
+@keyframes lx-wait-count { from { --lx-secs: 0; } to { --lx-secs: 600; } }
+@keyframes lx-wait-fill { to { width: 85%; } }
+@keyframes lx-wait-creep { from { width: 85%; } to { width: 97%; } }
+
 /* Sources */
 .lx-src {
   position: relative; display: grid; grid-template-columns: 4.6rem 1fr; gap: 1rem;

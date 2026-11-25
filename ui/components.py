@@ -69,12 +69,46 @@ def answer_card(text: str, streaming: bool = False) -> str:
     )
 
 
-def searching_card(chunk_count: int) -> str:
-    lines = "".join('<span class="lx-skel"></span>' for _ in range(3))
+TYPICAL_ANSWER_SECONDS = 10  # what an answer usually takes on the online demo
+SLOW_AFTER_SECONDS = 20  # past this, say so instead of leaving the visitor guessing
+
+ANSWER_STEPS = [
+    ("search", "Buscar en {n} fragmentos del Estatuto"),
+    ("write", "Redactar la respuesta con los artículos encontrados"),
+]
+
+
+def searching_card(chunk_count: int, stage: str = "search", elapsed: float = 0.0) -> str:
+    """While the answer is on its way: the step it's on, a live seconds counter and a bar that
+    fills over the usual time. The real time left can't be known (it depends on the model's
+    servers), so the bar is an estimate and, past the usual time, the card says it's slower.
+
+    ``elapsed``: seconds since the question was asked. Redrawing the card for the next step
+    starts its animations with a negative delay, so the counter and the bar carry on."""
+    order = [key for key, _ in ANSWER_STEPS]
+    current = order.index(stage) if stage in order else 0
+    items = []
+    for i, (_key, label) in enumerate(ANSWER_STEPS):
+        if i < current:
+            state, mark = "is-done", icon("check_circle")
+        elif i == current:
+            state, mark = "is-now", icon("progress_activity", "lx-rotate")
+        else:
+            state, mark = "", icon("radio_button_unchecked")
+        items.append(f'<li class="{state}">{mark}<span>{label.format(n=chunk_count)}</span></li>')
+    clock = f"--lx-t0: -{max(0.0, elapsed):.1f}s; --lx-typical: {TYPICAL_ANSWER_SECONDS}s; --lx-slow: {SLOW_AFTER_SECONDS}s"
     return (
-        '<section class="lx-answer lx-searching" aria-live="polite" aria-busy="true">'
-        f'<div class="lx-h" role="heading" aria-level="2">{icon("manage_search", "lx-spin")}Buscando en {chunk_count} fragmentos del Estatuto…</div>'
-        f'<div class="lx-skel-wrap">{lines}</div>'
+        f'<section class="lx-answer lx-searching" aria-live="polite" aria-busy="true" style="{clock}">'
+        f'<div class="lx-h" role="heading" aria-level="2">{icon("manage_search", "lx-spin")}Preparando tu respuesta</div>'
+        f'<ol class="lx-prep-steps">{"".join(items)}</ol>'
+        '<div class="lx-wait">'
+        '<span class="lx-wait-bar"><i></i></span>'
+        '<span class="lx-wait-text">'
+        '<span class="lx-wait-secs" aria-hidden="true"></span>'
+        '<span class="lx-wait-note">'
+        f'<span class="lx-wait-usual">Suele tardar unos {TYPICAL_ANSWER_SECONDS} segundos</span>'
+        '<span class="lx-wait-slow">Está tardando más de lo normal; la respuesta aparecerá aquí en cuanto llegue</span>'
+        "</span></span></div>"
         "</section>"
     )
 

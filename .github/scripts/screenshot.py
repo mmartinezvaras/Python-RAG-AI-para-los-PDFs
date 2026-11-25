@@ -45,6 +45,10 @@ with sync_playwright() as p:
     page.set_viewport_size({"width": 1280, "height": 1500})
 
     page.get_by_role("button", name=EXAMPLE_BUTTON).click()
+    # The waiting card: steps, seconds counter and progress bar (the local model is slow, so it shows)
+    page.get_by_text("Preparando tu respuesta").wait_for(timeout=60_000)
+    time.sleep(4)
+    page.screenshot(path="loader.png")
     page.get_by_role("heading", name="Fuentes").wait_for(timeout=300_000)
     time.sleep(2)  # let the "Citado" stamp animation finish
     answer = page.locator(".lx-answer").inner_text()

@@ -116,3 +116,14 @@ def test_project_page_explains_steps_problems_and_technologies():
     assert "var(--lx-ink)" in PROJECT_CSS and "#000000" not in PROJECT_CSS
     # Static text that Streamlit might read as Markdown or LaTeX
     assert "$" not in html and "**" not in html
+
+
+def test_waiting_card_shows_the_step_a_counter_and_keeps_counting_across_steps():
+    from ui.components import searching_card
+
+    first = searching_card(501, "search")
+    later = searching_card(501, "write", elapsed=4.25)
+    assert "Buscar en 501 fragmentos" in first and 'class="is-now"' in first
+    assert later.count('class="is-done"') == 1  # the search step is ticked off
+    assert "--lx-t0: -4.2s" in later or "--lx-t0: -4.3s" in later  # counter and bar carry on
+    assert "lx-wait-secs" in later and "Suele tardar" in later and "más de lo normal" in later
