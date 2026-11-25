@@ -58,7 +58,7 @@ with sync_playwright() as p:
     page.screenshot(path="demo.png", full_page=True)
 
     # Night theme: the stored answer is shown again without asking the model.
-    page.get_by_text("Noche", exact=True).click()
+    page.frame_locator(".st-key-theme iframe").get_by_role("radio", name="Noche").click()
     page.wait_for_function(
         "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#000000'",
         timeout=30_000,
@@ -83,7 +83,7 @@ with sync_playwright() as p:
     for section in ("Los pasos", "Los problemas y cómo los resolví", "Las tecnologías"):
         assert page.get_by_text(section, exact=True).count() == 1, f"Missing section: {section}"
     page.screenshot(path="project-dark.png", full_page=True)
-    page.get_by_text("Claro", exact=True).click()
+    page.frame_locator(".st-key-theme iframe").get_by_role("radio", name="Claro").click()
     page.wait_for_function(
         "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#F5F5F7'",
         timeout=30_000,

@@ -7,7 +7,10 @@ Monochrome on purpose: in light mode black ink is the accent (citations, stamp, 
 mode white is. Serif for the text of the law. Applied over Streamlit's own widgets with CSS
 custom properties.
 
-``page_css(mode)`` with mode "light", "dark" or "auto" (follows the operating system).
+``page_css()`` holds both palettes. Which one shows is decided in the browser by the
+``data-lx-theme`` attribute of the page (set by the Auto / Claro / Noche switch, see
+``ui/header.py``): "light", "dark", or none for auto (follows the operating system). Switching
+is instant because nothing goes back to the server.
 """
 
 # The five palette colours.
@@ -66,14 +69,14 @@ def _vars(tokens: dict[str, str]) -> str:
     return "".join(f"--lx-{k}:{v};" for k, v in tokens.items())
 
 
-def _scheme_rules(mode: str) -> str:
-    light = f":root{{{_vars(LIGHT)}color-scheme:light;}}"
-    dark = f":root{{{_vars(DARK)}color-scheme:dark;}}"
-    if mode == "dark":
-        return dark
-    if mode == "auto":
-        return light + f"@media (prefers-color-scheme: dark){{{dark}}}"
-    return light
+def scheme_css() -> str:
+    """Light by default; dark when the switch says so, or in auto mode when the system is dark."""
+    dark = f"{_vars(DARK)}color-scheme:dark;"
+    return (
+        f":root{{{_vars(LIGHT)}color-scheme:light;}}"
+        f':root[data-lx-theme="dark"]{{{dark}}}'
+        f'@media (prefers-color-scheme: dark){{:root:not([data-lx-theme="light"]){{{dark}}}}}'
+    )
 
 
 BASE_CSS = """
@@ -159,31 +162,9 @@ html { -webkit-tap-highlight-color: transparent; }
   color: var(--lx-sheet) !important;
 }
 
-/* Theme switch: one pill, right-aligned, always fully visible (no horizontal scroll). */
-.st-key-theme { display: flex; justify-content: flex-end; width: 100%; }
-.st-key-theme > div, .st-key-theme [data-testid="stButtonGroup"] {
-  width: auto !important; max-width: 100%; overflow: visible !important;
-}
-.st-key-theme [data-testid="stButtonGroup"] {
-  display: inline-flex; flex-wrap: nowrap; gap: 2px; padding: 3px;
-  background: var(--lx-sheet); border-radius: 999px; box-shadow: 0 0 0 1px var(--lx-ring), var(--lx-lift);
-}
-/* Streamlit's inner wrappers scroll horizontally when space is tight: let them size to their content */
-.st-key-theme [data-testid="stButtonGroup"] div:not(button div) {
-  overflow: visible !important; flex-wrap: nowrap !important; width: auto !important; gap: 2px;
-}
-.st-key-theme [data-testid="stButtonGroup"] button {
-  flex: 0 0 auto; white-space: nowrap; min-height: 0; margin: 0 !important;
-  padding: .32rem .8rem !important; border: 0 !important; border-radius: 999px !important;
-  background: transparent; font-size: .85rem;
-  transition: background-color 200ms var(--lx-ease-out), color 200ms var(--lx-ease-out), transform 160ms var(--lx-ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .st-key-theme [data-testid="stButtonGroup"] button:hover { background: var(--lx-seal-soft); }
-}
-@media (max-width: 420px) {
-  .st-key-theme [data-testid="stButtonGroup"] button { padding: .32rem .6rem !important; font-size: .8rem; }
-}
+/* Theme switch: a small page of its own (ui/header.py), right-aligned at the top. */
+.st-key-theme { margin-bottom: -.5rem; }
+.st-key-theme iframe { display: block; width: 100%; border: 0; color-scheme: normal; }
 
 /* Links between pages (st.page_link): a quiet pill, like the example buttons */
 [data-testid="stPageLink"] a {
@@ -425,5 +406,5 @@ html { -webkit-tap-highlight-color: transparent; }
 """
 
 
-def page_css(mode: str = "auto") -> str:
-    return f'<style>@import url("{FONTS}");{_scheme_rules(mode)}{BASE_CSS}</style>'
+def page_css() -> str:
+    return f'<style>@import url("{FONTS}");{scheme_css()}{BASE_CSS}</style>'

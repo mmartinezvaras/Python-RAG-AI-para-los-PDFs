@@ -62,7 +62,7 @@ with sync_playwright() as p:
         page.mouse.wheel(0, -170)
         time.sleep(0.1)
     time.sleep(0.6)
-    page.get_by_text("Noche", exact=True).click()
+    page.frame_locator(".st-key-theme iframe").get_by_role("radio", name="Noche").click()
     time.sleep(1.4)
     for _ in range(3):
         page.mouse.wheel(0, 170)
