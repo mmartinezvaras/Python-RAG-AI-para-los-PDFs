@@ -65,14 +65,24 @@ def test_not_found_explains_why_the_model_was_not_called():
     assert "0,61" in html and "0,64" in html and "No está en el documento" in html
 
 
-def test_theme_modes():
+def test_theme_modes_are_switched_in_the_browser():
+    """Both palettes are in the CSS; the page attribute picks one, so switching is instant."""
     assert LIGHT.keys() == DARK.keys()
     paper = lambda tokens: f"--lx-paper:{tokens['paper']};"  # noqa: E731
-    assert paper(DARK) in page_css("dark") and paper(LIGHT) not in page_css("dark")
-    assert paper(LIGHT) in page_css("light") and paper(DARK) not in page_css("light")
-    auto = page_css("auto")
-    assert paper(LIGHT) in auto and "prefers-color-scheme: dark" in auto and paper(DARK) in auto
-    assert "prefers-reduced-motion" in auto
+    css = page_css()
+    assert paper(LIGHT) in css and paper(DARK) in css
+    assert ':root[data-lx-theme="dark"]' in css  # Noche
+    assert 'prefers-color-scheme: dark){:root:not([data-lx-theme="light"])' in css  # Auto, unless Claro
+    assert "prefers-reduced-motion" in css
+
+
+def test_theme_switch_runs_in_the_browser_and_remembers_the_choice():
+    from ui.header import STORAGE_KEY, switch_html
+
+    html = switch_html()
+    for label in ("Auto", "Claro", "Noche"):
+        assert label in html
+    assert "page.dataset.lxTheme" in html and STORAGE_KEY in html and "localStorage" in html
 
 
 def test_theme_uses_only_the_palette():
@@ -116,3 +126,23 @@ def test_project_page_explains_steps_problems_and_technologies():
     assert "var(--lx-ink)" in PROJECT_CSS and "#000000" not in PROJECT_CSS
     # Static text that Streamlit might read as Markdown or LaTeX
     assert "$" not in html and "**" not in html
+
+
+def test_waiting_card_shows_the_step_a_counter_and_keeps_counting_across_steps():
+    from ui.components import searching_card
+
+    first = searching_card(501, "search")
+    later = searching_card(501, "write", elapsed=4.25)
+    assert "Buscar en 501 fragmentos" in first and 'class="is-now"' in first
+    assert later.count('class="is-done"') == 1  # the search step is ticked off
+    assert "--lx-t0: -4.2s" in later or "--lx-t0: -4.3s" in later  # counter and bar carry on
+    assert "lx-wait-secs" in later and "Suele tardar" in later and "más de lo normal" in later
+
+
+def test_the_stylesheet_has_no_angle_brackets():
+    """Streamlit reads a '<' inside the CSS as the start of an HTML tag and then drops the whole
+    stylesheet (the night theme stopped switching once because of a CSS '<integer>')."""
+    from ui.theme import page_css
+
+    css = page_css()
+    assert "<" not in css[len("<style>") : -len("</style>")]

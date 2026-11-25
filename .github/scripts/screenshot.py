@@ -26,25 +26,40 @@ with sync_playwright() as p:
     page.goto(URL)
     page.get_by_text("¿Qué dice el Estatuto de los Trabajadores?").wait_for(timeout=120_000)
     # The theme switch must be fully visible, without scrolling, on desktop and on a phone.
-    check_switch = """() => {
-        const group = document.querySelector('.st-key-theme [data-testid="stButtonGroup"]');
-        const box = group.getBoundingClientRect();
-        const scrollers = [group, ...group.querySelectorAll('div')].filter(d => d.scrollWidth > d.clientWidth + 1);
-        const hidden = [...group.querySelectorAll('button')].filter(b => {
+    # The theme switch (a small page in an iframe) must be fully visible, without scrolling,
+    # on desktop and on a phone.
+    check_switch = """body => {
+        const hidden = [...body.querySelectorAll('button')].filter(b => {
             const r = b.getBoundingClientRect();
-            return r.left < box.left - 1 || r.right > box.right + 1 || r.right > window.innerWidth;
+            return r.left < 0 || r.right > window.innerWidth + 1;
         }).map(b => b.innerText.trim());
-        return {scrolls: scrollers.length, hidden};
+        return {scrolls: body.scrollWidth > window.innerWidth + 1 ? 1 : 0, hidden};
     }"""
+    switch = page.frame_locator(".st-key-theme iframe")
     for width in (1280, 390):
         page.set_viewport_size({"width": width, "height": 1500})
         time.sleep(1)
-        result = page.evaluate(check_switch)
+        result = switch.locator("body").evaluate(check_switch)
         print(f"theme switch at {width}px: {result}")
         assert result == {"scrolls": 0, "hidden": []}, f"Theme switch not fully visible at {width}px: {result}"
+    # Switching is instant: no rerun of the app, just the page attribute.
+    switch.get_by_role("radio", name="Noche").click()
+    page.wait_for_function(
+        "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#000000'",
+        timeout=2_000,
+    )
+    switch.get_by_role("radio", name="Claro").click()
+    page.wait_for_function(
+        "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#F5F5F7'",
+        timeout=2_000,
+    )
     page.set_viewport_size({"width": 1280, "height": 1500})
 
     page.get_by_role("button", name=EXAMPLE_BUTTON).click()
+    # The waiting card: steps, seconds counter and progress bar (the local model is slow, so it shows)
+    page.get_by_text("Preparando tu respuesta").wait_for(timeout=60_000)
+    time.sleep(4)
+    page.screenshot(path="loader.png")
     page.get_by_role("heading", name="Fuentes").wait_for(timeout=300_000)
     time.sleep(2)  # let the "Citado" stamp animation finish
     answer = page.locator(".lx-answer").inner_text()
@@ -54,7 +69,7 @@ with sync_playwright() as p:
     page.screenshot(path="demo.png", full_page=True)
 
     # Night theme: the stored answer is shown again without asking the model.
-    page.get_by_text("Noche", exact=True).click()
+    page.frame_locator(".st-key-theme iframe").get_by_role("radio", name="Noche").click()
     page.wait_for_function(
         "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#000000'",
         timeout=30_000,
@@ -79,7 +94,7 @@ with sync_playwright() as p:
     for section in ("Los pasos", "Los problemas y cómo los resolví", "Las tecnologías"):
         assert page.get_by_text(section, exact=True).count() == 1, f"Missing section: {section}"
     page.screenshot(path="project-dark.png", full_page=True)
-    page.get_by_text("Claro", exact=True).click()
+    page.frame_locator(".st-key-theme iframe").get_by_role("radio", name="Claro").click()
     page.wait_for_function(
         "getComputedStyle(document.documentElement).getPropertyValue('--lx-paper').trim() === '#F5F5F7'",
         timeout=30_000,

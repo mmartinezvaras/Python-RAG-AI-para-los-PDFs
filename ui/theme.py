@@ -7,7 +7,10 @@ Monochrome on purpose: in light mode black ink is the accent (citations, stamp, 
 mode white is. Serif for the text of the law. Applied over Streamlit's own widgets with CSS
 custom properties.
 
-``page_css(mode)`` with mode "light", "dark" or "auto" (follows the operating system).
+``page_css()`` holds both palettes. Which one shows is decided in the browser by the
+``data-lx-theme`` attribute of the page (set by the Auto / Claro / Noche switch, see
+``ui/header.py``): "light", "dark", or none for auto (follows the operating system). Switching
+is instant because nothing goes back to the server.
 """
 
 # The five palette colours.
@@ -66,14 +69,14 @@ def _vars(tokens: dict[str, str]) -> str:
     return "".join(f"--lx-{k}:{v};" for k, v in tokens.items())
 
 
-def _scheme_rules(mode: str) -> str:
-    light = f":root{{{_vars(LIGHT)}color-scheme:light;}}"
-    dark = f":root{{{_vars(DARK)}color-scheme:dark;}}"
-    if mode == "dark":
-        return dark
-    if mode == "auto":
-        return light + f"@media (prefers-color-scheme: dark){{{dark}}}"
-    return light
+def scheme_css() -> str:
+    """Light by default; dark when the switch says so, or in auto mode when the system is dark."""
+    dark = f"{_vars(DARK)}color-scheme:dark;"
+    return (
+        f":root{{{_vars(LIGHT)}color-scheme:light;}}"
+        f':root[data-lx-theme="dark"]{{{dark}}}'
+        f'@media (prefers-color-scheme: dark){{:root:not([data-lx-theme="light"]){{{dark}}}}}'
+    )
 
 
 BASE_CSS = """
@@ -159,31 +162,9 @@ html { -webkit-tap-highlight-color: transparent; }
   color: var(--lx-sheet) !important;
 }
 
-/* Theme switch: one pill, right-aligned, always fully visible (no horizontal scroll). */
-.st-key-theme { display: flex; justify-content: flex-end; width: 100%; }
-.st-key-theme > div, .st-key-theme [data-testid="stButtonGroup"] {
-  width: auto !important; max-width: 100%; overflow: visible !important;
-}
-.st-key-theme [data-testid="stButtonGroup"] {
-  display: inline-flex; flex-wrap: nowrap; gap: 2px; padding: 3px;
-  background: var(--lx-sheet); border-radius: 999px; box-shadow: 0 0 0 1px var(--lx-ring), var(--lx-lift);
-}
-/* Streamlit's inner wrappers scroll horizontally when space is tight: let them size to their content */
-.st-key-theme [data-testid="stButtonGroup"] div:not(button div) {
-  overflow: visible !important; flex-wrap: nowrap !important; width: auto !important; gap: 2px;
-}
-.st-key-theme [data-testid="stButtonGroup"] button {
-  flex: 0 0 auto; white-space: nowrap; min-height: 0; margin: 0 !important;
-  padding: .32rem .8rem !important; border: 0 !important; border-radius: 999px !important;
-  background: transparent; font-size: .85rem;
-  transition: background-color 200ms var(--lx-ease-out), color 200ms var(--lx-ease-out), transform 160ms var(--lx-ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .st-key-theme [data-testid="stButtonGroup"] button:hover { background: var(--lx-seal-soft); }
-}
-@media (max-width: 420px) {
-  .st-key-theme [data-testid="stButtonGroup"] button { padding: .32rem .6rem !important; font-size: .8rem; }
-}
+/* Theme switch: a small page of its own (ui/header.py), right-aligned at the top. */
+.st-key-theme { margin-bottom: -.5rem; }
+.st-key-theme iframe { display: block; width: 100%; border: 0; color-scheme: normal; }
 
 /* Links between pages (st.page_link): a quiet pill, like the example buttons */
 [data-testid="stPageLink"] a {
@@ -289,6 +270,38 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 .lx-skel:nth-child(2) { width: 92%; } .lx-skel:nth-child(3) { width: 64%; }
 
+/* Waiting for the answer: a seconds counter (an animated integer shown through a CSS counter),
+   a bar that reaches 85 % at the usual time and then creeps on, and a note when it's slow.
+   --lx-t0 is a negative delay, so redrawing the card for the next step doesn't restart them. */
+@property --lx-secs { syntax: "\\3C integer\\3E "; inherits: false; initial-value: 0; }  /* the integer type, escaped: a raw angle bracket would read as HTML */
+.lx-searching .lx-prep-steps { margin: .2rem 0 1rem; }
+.lx-wait { display: grid; gap: .5rem; }
+.lx-wait-bar { display: block; height: .4rem; max-width: 26rem; border-radius: 999px; background: var(--lx-skel); overflow: hidden; }
+.lx-wait-bar i {
+  display: block; height: 100%; width: 0; background: var(--lx-seal); border-radius: inherit;
+  animation: lx-wait-fill var(--lx-typical, 10s) cubic-bezier(.2, .7, .4, 1) forwards,
+             lx-wait-creep 60s linear forwards;
+  animation-delay: var(--lx-t0, 0s), calc(var(--lx-t0, 0s) + var(--lx-typical, 10s));
+}
+.lx-wait-text { display: flex; gap: .55rem; align-items: baseline; flex-wrap: wrap; font-size: .85rem; color: var(--lx-ink-2); }
+.lx-wait-secs {
+  font-variant-numeric: tabular-nums; font-weight: 600; color: var(--lx-ink); min-width: 2.6em;
+  counter-reset: secs var(--lx-secs);
+  animation: lx-wait-count 600s steps(600, end) forwards; animation-delay: var(--lx-t0, 0s);
+}
+.lx-wait-secs::after { content: counter(secs) " s"; }
+/* The two notes share one spot; past the usual time the "slow" one takes over */
+.lx-wait-note { display: inline-grid; }
+.lx-wait-usual, .lx-wait-slow { grid-area: 1 / 1; }
+.lx-wait-slow { visibility: hidden; }
+.lx-wait-usual, .lx-wait-slow { animation: lx-wait-swap 1ms step-end forwards; animation-delay: calc(var(--lx-t0, 0s) + var(--lx-slow, 20s)); }
+.lx-wait-usual { animation-name: lx-wait-out; }
+@keyframes lx-wait-swap { to { visibility: visible; } }
+@keyframes lx-wait-out { to { visibility: hidden; } }
+@keyframes lx-wait-count { from { --lx-secs: 0; } to { --lx-secs: 600; } }
+@keyframes lx-wait-fill { to { width: 85%; } }
+@keyframes lx-wait-creep { from { width: 85%; } to { width: 97%; } }
+
 /* Sources */
 .lx-src {
   position: relative; display: grid; grid-template-columns: 4.6rem 1fr; gap: 1rem;
@@ -393,5 +406,5 @@ html { -webkit-tap-highlight-color: transparent; }
 """
 
 
-def page_css(mode: str = "auto") -> str:
-    return f'<style>@import url("{FONTS}");{_scheme_rules(mode)}{BASE_CSS}</style>'
+def page_css() -> str:
+    return f'<style>@import url("{FONTS}");{scheme_css()}{BASE_CSS}</style>'

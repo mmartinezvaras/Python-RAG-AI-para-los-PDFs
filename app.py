@@ -6,6 +6,7 @@ Run with:  streamlit run app.py
 import json
 import os
 import re
+import time
 import threading
 import urllib.request
 from pathlib import Path
@@ -234,9 +235,12 @@ if question:
         st.stop()
     st.session_state.asked = asked + 1
 
-    html(ui.searching_card(chunk_count), slot)
+    started = time.monotonic()
+    html(ui.searching_card(chunk_count, "search"), slot)
     try:
         answer, pieces = stream_answer(question)
+        if answer.grounded and answer.text == "":  # found the articles; now the model writes
+            html(ui.searching_card(chunk_count, "write", time.monotonic() - started), slot)
         text = ""
         for piece in pieces:
             text += piece
