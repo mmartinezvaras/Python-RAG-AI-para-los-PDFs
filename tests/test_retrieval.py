@@ -77,3 +77,30 @@ def test_hybrid_retriever_returns_numbered_passages_with_relevance(tmp_path):
         assert top.articles == "38" and top.number == 1 and top.page == 0
         assert top.relevance == result.best_relevance > 0.9
         assert [p.number for p in result.passages] == [1, 2]
+
+
+class BrokenEmbeddings(KeywordEmbeddings):
+    """Indexes fine, but the question can't be embedded (e.g. the API ran out of quota)."""
+
+    def embed_query(self, text):
+        from rag.providers import ApiError
+
+        raise ApiError("429 RESOURCE_EXHAUSTED", status=429)
+
+
+def test_retriever_falls_back_to_keywords_when_the_question_cant_be_embedded(tmp_path):
+    texts = [
+        "Artículo 38. Vacaciones anuales.\nLas vacaciones serán de treinta días naturales.",
+        "Artículo 34. Jornada.\nLa jornada será de cuarenta horas semanales.",
+    ]
+    chunks = calculate_chunk_ids(
+        tag_articles([Document(page_content=t, metadata={"source": "data/ley.pdf", "page": i}) for i, t in enumerate(texts)])
+    )
+    sync_index(chunks, chroma_path=str(tmp_path), embedding_function=KeywordEmbeddings())
+
+    from rag.ingest import get_collection
+
+    retriever = Retriever(collection=get_collection(str(tmp_path)), embedding_function=BrokenEmbeddings())
+    result = retriever.search("¿Cuántos días de vacaciones tengo?", k=2)
+    assert result.keyword_only and result.passages[0].articles == "38"
+    assert retriever.search("receta de paella", k=2).passages == []  # no shared word: nothing

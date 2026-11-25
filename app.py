@@ -22,7 +22,7 @@ except Exception:  # no secrets file: running locally
     pass
 
 from rag import config  # noqa: E402
-from rag.answer import stream_answer  # noqa: E402
+from rag.answer import clear_stored_answers, stream_answer  # noqa: E402
 from rag.documents import page_link, source_info  # noqa: E402
 from rag.ingest import build_database, get_collection  # noqa: E402
 from ui import components as ui  # noqa: E402
@@ -186,6 +186,7 @@ with st.sidebar:
                 target.write_bytes(uploaded.getbuffer())
                 with st.spinner("Indexando los fragmentos nuevos…"):
                     result = build_database(download=False)
+                clear_stored_answers()  # answers given before may not take the new PDF into account
                 st.session_state.last_upload = uploaded.name
                 st.success(
                     f"Añadidos {result.added} fragmentos. Los que ya existían no se han vuelto a procesar.",

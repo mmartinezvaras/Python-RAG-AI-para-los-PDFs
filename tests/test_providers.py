@@ -104,3 +104,60 @@ def test_retries_on_rate_limit(server):
     FakeOpenAI.fail_first = 2
     assert OpenAICompatibleLLM("m", server, "k").complete("x") == "Hola mundo"
     assert len(FakeOpenAI.calls) == 3
+
+
+# ---------- Several models, so the demo keeps answering when one runs out of quota ----------
+
+
+class _Model:
+    def __init__(self, name, fails=False):
+        self.model, self.fails, self.calls = name, fails, 0
+
+    def complete(self, prompt):
+        self.calls += 1
+        if self.fails:
+            raise providers.ApiError("429 quota", status=429)
+        return f"answer from {self.model}"
+
+    def stream(self, prompt):
+        self.calls += 1
+        if self.fails:
+            raise providers.ApiError("429 quota", status=429)
+        yield f"answer from {self.model}"
+
+
+def test_fallback_uses_the_next_model_when_one_is_out_of_quota():
+    main, backup = _Model("main", fails=True), _Model("backup")
+    llm = providers.FallbackLLM([main, backup])
+    assert "".join(llm.stream("hola")) == "answer from backup"
+    assert llm.complete("hola") == "answer from backup"
+    assert llm.used == "backup"
+
+
+def test_a_model_out_of_quota_rests_and_is_tried_again_later():
+    now = [0.0]
+    main, backup = _Model("main", fails=True), _Model("backup")
+    llm = providers.FallbackLLM([main, backup], clock=lambda: now[0])
+    llm.complete("a")
+    llm.complete("b")
+    assert main.calls == 1  # not asked again while resting
+    now[0] += providers.FallbackLLM.REST_SECONDS + 1
+    main.fails = False
+    assert llm.complete("c") == "answer from main"
+
+
+def test_fallback_raises_when_every_model_fails():
+    llm = providers.FallbackLLM([_Model("a", fails=True), _Model("b", fails=True)])
+    with pytest.raises(providers.ApiError) as info:
+        "".join(llm.stream("hola"))
+    assert info.value.status == 429 and "a:" in str(info.value) and "b:" in str(info.value)
+
+
+def test_the_demo_does_not_make_a_visitor_wait_a_minute_for_a_rate_limit(server, monkeypatch):
+    waits = []
+    monkeypatch.setattr(providers.time, "sleep", waits.append)
+    FakeOpenAI.fail_first = 5
+    llm = OpenAICompatibleLLM("m", server, "secret", retries=1, max_wait=3)
+    with pytest.raises(providers.ApiError):
+        llm.complete("hola")
+    assert waits and max(waits) <= 3

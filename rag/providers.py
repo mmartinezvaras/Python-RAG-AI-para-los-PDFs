@@ -25,11 +25,25 @@ from rag import config
 
 
 class ApiError(RuntimeError):
-    pass
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
 
 
-def _post(base_url: str, path: str, api_key: str, payload: dict, stream: bool = False, retries: int = 5):
-    """POST JSON with retries on rate limits / transient errors (free tiers return 429 often)."""
+def _post(
+    base_url: str,
+    path: str,
+    api_key: str,
+    payload: dict,
+    stream: bool = False,
+    retries: int = 5,
+    max_wait: float = 60,
+):
+    """POST JSON with retries on rate limits / transient errors (free tiers return 429 often).
+
+    ``max_wait``: the longest pause between attempts. Batch jobs (indexing, evaluation) can wait a
+    full minute for a per-minute limit to clear; a visitor of the demo can't, so the demo uses a
+    short wait and moves on to another model instead (see ``FallbackLLM``)."""
     url = base_url.rstrip("/") + "/" + path.lstrip("/")
     body = json.dumps(payload).encode()
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
@@ -42,11 +56,11 @@ def _post(base_url: str, path: str, api_key: str, payload: dict, stream: bool = 
             if exc.code in (429, 500, 502, 503, 504) and attempt < retries:
                 # A per-minute limit only clears after a full minute.
                 wait = float(exc.headers.get("Retry-After") or (61 if exc.code == 429 else delay))
-                time.sleep(min(wait, 60))
+                time.sleep(min(wait, max_wait))
                 delay *= 2
                 continue
             detail = exc.read().decode(errors="replace")[:500]
-            raise ApiError(f"{exc.code} from {url}: {detail}") from exc
+            raise ApiError(f"{exc.code} from {url}: {detail}", status=exc.code) from exc
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             # The free tier sometimes stalls a response until the read times out: retry those too.
             if attempt < retries:
@@ -78,8 +92,17 @@ def parse_sse_deltas(lines: Iterable[bytes | str]) -> Iterator[str]:
 
 
 class OpenAICompatibleLLM:
-    def __init__(self, model: str, base_url: str, api_key: str, temperature: float = 0.0):
+    def __init__(
+        self,
+        model: str,
+        base_url: str,
+        api_key: str,
+        temperature: float = 0.0,
+        retries: int = 5,
+        max_wait: float = 60,
+    ):
         self.model, self.base_url, self.api_key, self.temperature = model, base_url, api_key, temperature
+        self.retries, self.max_wait = retries, max_wait
 
     def _payload(self, prompt: str, stream: bool) -> dict:
         return {
@@ -90,20 +113,93 @@ class OpenAICompatibleLLM:
         }
 
     def complete(self, prompt: str) -> str:
-        with _post(self.base_url, "chat/completions", self.api_key, self._payload(prompt, False)) as resp:
+        payload = self._payload(prompt, False)
+        with _post(self.base_url, "chat/completions", self.api_key, payload, False, self.retries, self.max_wait) as resp:
             data = json.load(resp)
         return (data["choices"][0]["message"].get("content") or "").strip()
 
     def stream(self, prompt: str) -> Iterator[str]:
-        with _post(self.base_url, "chat/completions", self.api_key, self._payload(prompt, True), stream=True) as resp:
+        payload = self._payload(prompt, True)
+        with _post(self.base_url, "chat/completions", self.api_key, payload, True, self.retries, self.max_wait) as resp:
             yield from parse_sse_deltas(resp)
 
 
-class OpenAICompatibleEmbeddings:
-    def __init__(self, model: str, base_url: str, api_key: str, batch_size: int = 64):
-        self.model, self.base_url, self.api_key, self.batch_size = model, base_url, api_key, batch_size
+class FallbackLLM:
+    """Several models tried in order: when one fails (daily quota used up, model withdrawn,
+    server error), the next one answers. On Gemini's free tier every model has its own quota,
+    so a list of models multiplies the questions the demo can answer in a day."""
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+    REST_SECONDS = 15 * 60  # a model that ran out of quota is skipped for a while
+
+    def __init__(self, llms: list, clock=time.monotonic):
+        if not llms:
+            raise ValueError("FallbackLLM needs at least one model")
+        self.llms = llms
+        self.model = llms[0].model
+        self.used: str | None = None  # the model that produced the last answer
+        self._clock = clock
+        self._resting: dict[str, float] = {}  # model -> when it can be tried again
+        self._last_status: int | None = None
+
+    def _order(self) -> list:
+        """Models that aren't resting first, in the configured order; resting ones last, so they
+        are still tried if every other model fails."""
+        now = self._clock()
+        ready = [m for m in self.llms if self._resting.get(m.model, 0) <= now]
+        return ready + [m for m in self.llms if m not in ready]
+
+    def _failed(self, llm, exc: ApiError, errors: list[str]) -> None:
+        errors.append(f"{llm.model}: {exc}")
+        self._last_status = exc.status
+        # Out of quota (429), withdrawn or not free (4xx) or down (5xx): give it a rest either way.
+        self._resting[llm.model] = self._clock() + self.REST_SECONDS
+
+    def complete(self, prompt: str) -> str:
+        errors: list[str] = []
+        for llm in self._order():
+            try:
+                text = llm.complete(prompt)
+            except ApiError as exc:
+                self._failed(llm, exc, errors)
+                continue
+            self.used = llm.model
+            return text
+        raise ApiError(" | ".join(errors), status=self._last_status)
+
+    def stream(self, prompt: str) -> Iterator[str]:
+        errors: list[str] = []
+        for llm in self._order():
+            pieces = llm.stream(prompt)
+            try:
+                # The request is sent when the first piece is asked for: a quota error shows up
+                # here, before anything reached the visitor, so the next model can take over.
+                first = next(pieces, None)
+            except ApiError as exc:
+                self._failed(llm, exc, errors)
+                continue
+            self.used = llm.model
+            if first is not None:
+                yield first
+            yield from pieces
+            return
+        raise ApiError(" | ".join(errors), status=self._last_status)
+
+
+class OpenAICompatibleEmbeddings:
+    def __init__(
+        self,
+        model: str,
+        base_url: str,
+        api_key: str,
+        batch_size: int = 64,
+        query_retries: int = 5,
+        query_max_wait: float = 60,
+    ):
+        self.model, self.base_url, self.api_key, self.batch_size = model, base_url, api_key, batch_size
+        # A visitor's question can't wait minutes; indexing (embed_documents) can.
+        self.query_retries, self.query_max_wait = query_retries, query_max_wait
+
+    def embed_documents(self, texts: list[str], retries: int = 5, max_wait: float = 60) -> list[list[float]]:
         vectors: list[list[float]] = []
         # Free tiers count every text as one request (Gemini: 100 a minute), so pace the batches.
         per_minute = int(os.getenv("RAG_EMBED_PER_MINUTE") or 0)
@@ -111,7 +207,8 @@ class OpenAICompatibleEmbeddings:
             batch = texts[i : i + self.batch_size]
             if per_minute and i:
                 time.sleep(60 * len(batch) / per_minute)
-            with _post(self.base_url, "embeddings", self.api_key, {"model": self.model, "input": batch}) as resp:
+            payload = {"model": self.model, "input": batch}
+            with _post(self.base_url, "embeddings", self.api_key, payload, False, retries, max_wait) as resp:
                 data = json.load(resp)["data"]
             # OpenAI numbers each item with "index"; Gemini's compatible API omits it and
             # returns them in input order.
@@ -123,7 +220,7 @@ class OpenAICompatibleEmbeddings:
         return vectors
 
     def embed_query(self, text: str) -> list[float]:
-        return self.embed_documents([text])[0]
+        return self.embed_documents([text], self.query_retries, self.query_max_wait)[0]
 
 
 # ------------------------------------------------------------------------------------------
@@ -171,7 +268,8 @@ def get_embedding_function():
     provider = config.EMBEDDING_PROVIDER
     if provider == "openai":
         _require_key()
-        return OpenAICompatibleEmbeddings(config.EMBED_MODEL, config.OPENAI_BASE_URL, config.OPENAI_API_KEY)
+        quick = {"query_retries": 1, "query_max_wait": 3} if config.PUBLIC_DEMO else {}
+        return OpenAICompatibleEmbeddings(config.EMBED_MODEL, config.OPENAI_BASE_URL, config.OPENAI_API_KEY, **quick)
     if provider == "bedrock":
         import os
 
@@ -188,8 +286,20 @@ def get_embedding_function():
 
 
 def get_llm(model: str | None = None):
-    model = model or config.LLM_MODEL
-    if config.LLM_PROVIDER == "openai":
-        _require_key()
-        return OpenAICompatibleLLM(model, config.OPENAI_BASE_URL, config.OPENAI_API_KEY)
-    return OllamaChat(model)
+    """The model that writes the answers. With no ``model`` given and an OpenAI-compatible
+    provider, the configured fallbacks (``RAG_LLM_FALLBACKS``) stand behind the main model.
+
+    In the public demo a visitor is waiting, so each model gets one quick retry before the next
+    one is tried; batch jobs (evaluation) keep the patient retries."""
+    if config.LLM_PROVIDER != "openai":
+        return OllamaChat(model or config.LLM_MODEL)
+    _require_key()
+    patience = {"retries": 1, "max_wait": 3} if config.PUBLIC_DEMO else {}
+
+    def one(name: str) -> OpenAICompatibleLLM:
+        return OpenAICompatibleLLM(name, config.OPENAI_BASE_URL, config.OPENAI_API_KEY, **patience)
+
+    if model:
+        return one(model)
+    names = [config.LLM_MODEL] + [m for m in config.LLM_FALLBACKS if m != config.LLM_MODEL]
+    return FallbackLLM([one(m) for m in dict.fromkeys(names)])

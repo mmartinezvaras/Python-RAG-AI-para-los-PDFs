@@ -26,6 +26,12 @@ EMBEDDING_PROVIDER = os.getenv("RAG_EMBEDDINGS", "ollama").lower()  # ollama | o
 _default_llm = "llama3.2:3b" if LLM_PROVIDER == "ollama" else "gemini-3.8-flash"
 _default_embed = "nomic-embed-text" if EMBEDDING_PROVIDER == "ollama" else "gemini-embedding-001"
 LLM_MODEL = os.getenv("RAG_LLM_MODEL", _default_llm)
+# Models tried in order when the main one fails (e.g. its free daily quota is used up). On
+# Gemini's free tier each model has its own quota. Empty for Ollama: the local model has no quota.
+_default_fallbacks = (
+    "" if LLM_PROVIDER == "ollama" else "gemini-3.7-flash,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemma-4-31b-it"
+)
+LLM_FALLBACKS = [m.strip() for m in os.getenv("RAG_LLM_FALLBACKS", _default_fallbacks).split(",") if m.strip()]
 EMBED_MODEL = os.getenv("RAG_EMBED_MODEL", _default_embed)
 # A stronger model can grade the evaluation; defaults to the answering model.
 JUDGE_MODEL = os.getenv("RAG_JUDGE_MODEL", LLM_MODEL)
